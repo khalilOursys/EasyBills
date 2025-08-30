@@ -1,59 +1,46 @@
 import { Injectable } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateBankDto } from './dto/create-bank.dto';
 import { UpdateBankDto } from './dto/update-bank.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { DeepPartial, Repository } from 'typeorm';
-import { Bank } from './entities/bank.entity';
-import { NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 @Injectable()
 export class BankService {
-  constructor(
-    @InjectRepository(Bank)
-    private bankRepository: Repository<Bank>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  async create(createBankDto: CreateBankDto) {
-    // Create a new bank entity from the DTO
-    const bank = this.bankRepository.create(createBankDto as DeepPartial<Bank>);
-
-    // Save it to the database
-    return await this.bankRepository.save(bank);
+  create(data: CreateBankDto) {
+    return this.prisma.bank.create({ data });
   }
 
-  async findAll() {
-    const listBanks = await this.bankRepository.find();
-    return listBanks;
+  findAll() {
+    return this.prisma.bank.findMany();
   }
 
-  async findOne(id: number) {
-    //return `This action returns a ${id} bank`;
-    const bank = await this.bankRepository.findOne({
-      where: { Idbank: id },
-    });
-    if (!bank) {
-      throw new NotFoundException(`Bank with ID ${id} not found`);
+  findOne(id: number) {
+  //return this.prisma.bank.findUnique({ where: { id } });
+  return this.prisma.bank.findUnique({
+    where:{
+       Idbank:id
     }
-    return bank;
+  })
+  
   }
 
-  async update(id: number, updateBankDto: UpdateBankDto) {
-    const bank = await this.bankRepository.preload({
-      Idbank: id,
-      ...updateBankDto,
-    });
-
-    if (!bank) {
-      throw new NotFoundException(`Bank with ID ${id} not found`);
-    }
-
-    return this.bankRepository.save(bank);
+  update(id: number, data: UpdateBankDto) {
+    return this.prisma.bank.update({ where: { Idbank:id }, data });
+  
   }
 
   async remove(id: number) {
-    const result = await this.bankRepository.delete({
-      Idbank: id,
-    });
-    return result;
-    
+    const targetBank=await this.prisma.bank.findUnique({
+      where:{
+        Idbank:id
+      }
+    })
+    console.log(targetBank)
+    if(!targetBank){
+      return "There is no bank that matcges this specific id"
+    }else
+    return this.prisma.bank.delete({ where: { Idbank:id } });
+   
   }
 }

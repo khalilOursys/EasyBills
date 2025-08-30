@@ -1,16 +1,15 @@
-
 import { IsString } from 'class-validator';
+
 export class CreateBankDto {
+  @IsString()
+  NameBank: string;
 
-    @IsString()
-    nameBank: string;
+  @IsString()
+  Agence: string;
 
-    @IsString()
-    agence: string;
+  @IsString()
+  Adress: string;
 
-    @IsString()
-    address: string;
-
-    @IsString()
-    rib: string;
+  @IsString()
+  RIB: string;
 }

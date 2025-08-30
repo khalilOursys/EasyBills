@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module} from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
@@ -14,6 +14,7 @@ import { CarModule } from './car/car.module';
 import { BankModule } from './bank/bank.module';
 import { BankOperationModule } from './bankoperation/bank-operation.module';
 import { SupplierModule } from './supplier/supplier.module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -29,7 +30,7 @@ import { SupplierModule } from './supplier/supplier.module';
     CarModule,
     BankModule,
     BankOperationModule,
-    SupplierModule,
+    SupplierModule,PrismaModule
   ],
 })
 export class AppModule {}
