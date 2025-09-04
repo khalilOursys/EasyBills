@@ -17,7 +17,8 @@ async function bootstrap() {
   app.useStaticAssets(join(__dirname, '..', 'uploads'), {
     prefix: '/uploads/', // This will serve files from the uploads directory
   });
-  await app.listen(3000); // Ensure backend runs on port 3001
+
+  await app.listen(process.env.PORT || 3000); 
 }
 
 //Creating new Branch
