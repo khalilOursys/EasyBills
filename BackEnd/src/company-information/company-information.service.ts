@@ -7,7 +7,7 @@ import { UpdateCompanyInformationDto } from './dto/update-company-information.dt
 export class CompanyInformationService {
   constructor(private prisma: PrismaService) {}
 
-/*
+  /*
  
  *   This method ensures that company information is only created once.
   - If a record with the same unique taxId exists, it will be updated.
@@ -52,31 +52,51 @@ export class CompanyInformationService {
     }
   }
 
-async remove(id: number) {
-  try {
-    const existing = await this.prisma.companyInformation.findFirst({
-      where: { id },
-    });
+  async findById(id: number) {
+    try {
+      const existing = await this.prisma.companyInformation.findFirst({
+        where: { id },
+      });
+      if (!existing) {
+        throw new HttpException(
+          `Company information with ID ${id} not found`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      return existing;
+    } catch (error) {
+      if (!(error instanceof HttpException && error.getStatus() < 500)) {
+        console.error('❌ Error in findById', error);
+      }
 
-    if (!existing) {
-    
-      throw new HttpException(
-        `Company information with ID ${id} not found`,
-        HttpStatus.NOT_FOUND,
-      );
+      throw error;
     }
-
-    
-    return await this.prisma.companyInformation.delete({ where: { id } });
-  } catch (error) {
-    
-    if (!(error instanceof HttpException && error.getStatus() < 500)) {
-      console.error('❌ Error in remove:', error);
-    }
-
-   
-    throw error;
   }
-}
+  
+  async remove(id: number) {
+    try {
+      const existing = await this.prisma.companyInformation.findFirst({
+        where: { id },
+      });
 
+      if (!existing) {
+        throw new HttpException(
+          `Company information with ID ${id} not found`,
+          HttpStatus.NOT_FOUND,
+        );
+      }
+
+    await this.prisma.companyInformation.delete({ where: { id } });
+    return {
+      statusCode: HttpStatus.OK,
+      message: `Company information with ID ${id} deleted successfully`,
+    };
+    } catch (error) {
+      if (!(error instanceof HttpException && error.getStatus() < 500)) {
+        console.error('❌ Error in remove:', error);
+      }
+
+      throw error;
+    }
+  }
 }
