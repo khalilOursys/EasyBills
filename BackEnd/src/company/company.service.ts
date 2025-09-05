@@ -1,36 +1,36 @@
 import { Injectable, HttpException, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateCompanyInformationDto } from './dto/create-company-information.dto';
-import { UpdateCompanyInformationDto } from './dto/update-company-information.dto';
+import { CreateCompanyDto } from './dto/create-company.dto';
+
 
 @Injectable()
-export class CompanyInformationService {
+export class CompanyService {
   constructor(private prisma: PrismaService) {}
 
   /*
  
- *   This method ensures that company information is only created once.
+ *   This method ensures that company  is only created once.
   - If a record with the same unique taxId exists, it will be updated.
   - If no record exists, a new one will be created.
  */
-  async createOrUpdate(data: CreateCompanyInformationDto) {
+  async createOrUpdate(data: CreateCompanyDto) {
     try {
-      const existing = await this.prisma.companyInformation.findFirst({
+      const existing = await this.prisma.company.findFirst({
         where: { taxId: data.taxId },
       });
 
       if (existing) {
-        return this.prisma.companyInformation.update({
+        return this.prisma.company.update({
           where: { id: existing.id },
           data,
         });
       } else {
-        return this.prisma.companyInformation.create({ data });
+        return this.prisma.company.create({ data });
       }
     } catch (error) {
       console.error('❌ Error in createOrUpdate():', error);
       throw new HttpException(
-        'Failed to create or update company information',
+        'Failed to create or update company ',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -38,13 +38,13 @@ export class CompanyInformationService {
 
   async findAll() {
     try {
-      return await this.prisma.companyInformation.findMany();
+      return await this.prisma.company.findMany();
     } catch (error) {
       console.error('❌ Error in findAll():', error);
       throw new HttpException(
         {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: 'Failed to fetch company information',
+          message: 'Failed to fetch company ',
           error: error.message,
         },
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -54,12 +54,12 @@ export class CompanyInformationService {
 
   async findById(id: number) {
     try {
-      const existing = await this.prisma.companyInformation.findFirst({
+      const existing = await this.prisma.company.findFirst({
         where: { id },
       });
       if (!existing) {
         throw new HttpException(
-          `Company information with ID ${id} not found`,
+          `Company  with ID ${id} not found`,
           HttpStatus.NOT_FOUND,
         );
       }
@@ -75,21 +75,21 @@ export class CompanyInformationService {
   
   async remove(id: number) {
     try {
-      const existing = await this.prisma.companyInformation.findFirst({
+      const existing = await this.prisma.company.findFirst({
         where: { id },
       });
 
       if (!existing) {
         throw new HttpException(
-          `Company information with ID ${id} not found`,
+          `Company  with ID ${id} not found`,
           HttpStatus.NOT_FOUND,
         );
       }
 
-    await this.prisma.companyInformation.delete({ where: { id } });
+    await this.prisma.company.delete({ where: { id } });
     return {
       statusCode: HttpStatus.OK,
-      message: `Company information with ID ${id} deleted successfully`,
+      message: `Company  with ID ${id} deleted successfully`,
     };
     } catch (error) {
       if (!(error instanceof HttpException && error.getStatus() < 500)) {

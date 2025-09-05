@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsEmail } from 'class-validator';
 
-export class CreateCompanyInformationDto {
+export class CreateCompanyDto {
 
   @IsString() taxId: string;
   @IsString() tradeRegister: string;

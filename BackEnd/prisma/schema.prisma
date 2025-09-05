@@ -10,7 +10,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model CompanyInformation {
+model Company {
   id          Int     @id @default(autoincrement())
   taxId       String
   tradeRegister String
