@@ -3,33 +3,33 @@ import { IsString, IsOptional, IsEmail } from 'class-validator';
 export class CreateCompanyDto {
 
   @IsString() 
-  taxId: String;
+  taxId: string;
 
   @IsString()
-  tradeRegister: String;
+  tradeRegister: string;
 
   @IsString() 
-  activity: String;
+  activity: string;
 
   @IsString() 
-  manager: String;
+  manager: string;
 
   @IsString() 
-  address: String;
+  address: string;
 
   @IsString() 
-  phone: String;
+  phone: string;
 
   @IsOptional() 
   @IsString() 
-  fax?: String;
+  fax?: string;
 
   @IsEmail() 
-  email: String;
+  email: string;
 
-  @IsString() bankName: String;
+  @IsString() bankName: string;
 
   @IsString() 
-  rib: String;
+  rib: string;
 }
 
