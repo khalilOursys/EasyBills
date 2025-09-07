@@ -2,15 +2,34 @@ import { IsString, IsOptional, IsEmail } from 'class-validator';
 
 export class CreateCompanyDto {
 
-  @IsString() taxId: string;
-  @IsString() tradeRegister: string;
-  @IsString() activity: string;
-  @IsString() manager: string;
-  @IsString() address: string;
-  @IsString() phone: string;
-  @IsOptional() @IsString() fax?: string;
-   @IsEmail() email: string;
-  @IsString() bankName: string;
-  @IsString() rib: string;
+  @IsString() 
+  taxId: String;
+
+  @IsString()
+  tradeRegister: String;
+
+  @IsString() 
+  activity: String;
+
+  @IsString() 
+  manager: String;
+
+  @IsString() 
+  address: String;
+
+  @IsString() 
+  phone: String;
+
+  @IsOptional() 
+  @IsString() 
+  fax?: String;
+
+  @IsEmail() 
+  email: String;
+
+  @IsString() bankName: String;
+
+  @IsString() 
+  rib: String;
 }
 
