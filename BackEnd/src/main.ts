@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as dotenv from 'dotenv';
 import { join } from 'path';
+import { ValidationPipe } from '@nestjs/common';
 dotenv.config();
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -18,8 +19,10 @@ async function bootstrap() {
     prefix: '/uploads/', // This will serve files from the uploads directory
   });
 
-  await app.listen(process.env.PORT || 3000); 
-}
+  // Set global prefix for all routes
+  app.setGlobalPrefix('api');
 
+  await app.listen(process.env.PORT || 3000);
+}
 //Creating new Branch
 bootstrap();

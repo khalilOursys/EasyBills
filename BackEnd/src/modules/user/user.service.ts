@@ -4,16 +4,18 @@ import {
   HttpStatus,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
+import { PaginationSearchDto } from 'src/common/dto/pagination-search.dto';
+import { findAllWithSearchAndCriteria ,findAll} from 'src/common/helpers/find-all.helper';
 
 @Injectable()
 export class UserService {
   constructor(private prisma: PrismaService) {}
 
-  async createUser(
+  async create(
     name: string,
     email: string,
     password: string,
@@ -41,16 +43,22 @@ export class UserService {
     return this.prisma.successResponse(newUser);
   }
 
-  async findAll() {
+  async findAll(dto :PaginationSearchDto) {
     const users = await this.prisma.safeExecute(
-      this.prisma.user.findMany({
-        include: { role: true },
-      }),
+      findAll('user',dto)
     );
     return this.prisma.successResponse(users);
   }
 
-  async findOne(id: number) {
+  async findAllWithPaginationAndSearch(dto: PaginationSearchDto) {
+    const users = await this.prisma.safeExecute(
+      findAllWithSearchAndCriteria('user', dto, ['name', 'email']),
+    );
+
+    return this.prisma.successResponse(users);
+  }
+
+  async findById(id: number) {
     const user = await this.prisma.safeExecute(
       this.prisma.user.findUniqueOrThrow({ where: { id } }),
     );
@@ -73,16 +81,6 @@ export class UserService {
     return await bcrypt.compare(newPassword, hashedPassword);
   }
 
-  /*   async update(id: number, updateUserDto: UpdateUserDto) {
-    const user = await this.prisma.safeExecute(
-       // If email is unchanged, remove it from the update object
-   this.prisma.user.update({
-        where: { id },
-        data: updateUserDto,
-      }),
-    );
-    return this.prisma.successResponse(user);
-  } */
   async update(id: number, updateUserDto: UpdateUserDto) {
     const existingUser = await this.prisma.user.findUnique({ where: { id } });
     //Password handling
@@ -106,8 +104,25 @@ export class UserService {
     return this.prisma.successResponse(user);
   }
 
+   //Soft delete
   async remove(id: number) {
-    await this.prisma.safeExecute(this.prisma.user.delete({ where: { id } }));
-    return this.prisma.successResponse({ message: 'user deleted' });
+    await this.prisma.safeExecute(
+      this.prisma.user.update({
+        where: { id },
+        data: { isDeleted: true },
+      }),
+    );
+    return this.prisma.successResponse({ message: 'Role soft deleted' });
+  }
+
+  //Restore soft deleted company
+  async restore(id: number) {
+    await this.prisma.safeExecute(
+      this.prisma.user.update({
+        where: { id },
+        data: { isDeleted: false },
+      }),
+    );
+    return this.prisma.successResponse({ message: 'Role restored' });
   }
 }

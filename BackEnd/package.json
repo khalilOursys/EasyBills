@@ -20,6 +20,7 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
+    "@faker-js/faker": "^10.0.0",
     "@nestjs-modules/mailer": "^2.0.2",
     "@nestjs/common": "^10.0.0",
     "@nestjs/core": "^10.0.0",
@@ -92,6 +93,6 @@
     "testEnvironment": "node"
   },
   "prisma": {
-    "seed": "ts-node  src/prisma/seed.ts"
+    "seed": "ts-node  src/prisma/prisma.seed.ts"
   }
 }

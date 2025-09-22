@@ -17,7 +17,7 @@ export class AuthController {
     @Body('tel') tel: string,
     @Body('roleId') roleId: number, // Add role here
   ) {
-    const user = await this.userService.createUser(
+    const user = await this.userService.create(
       name,
       email,
       password,
@@ -32,8 +32,6 @@ export class AuthController {
     @Body('email') email: string,
     @Body('password') password: string,
   ) {
-    console.log(email, password);
-
     const user = await this.authService.validateUser(email, password);
     return this.authService.login(user); // Return JWT after successful login
   }

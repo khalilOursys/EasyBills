@@ -1,55 +1,114 @@
-// src/common/helpers/helper.ts
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { PaginationSearchDto } from '../dto/pagination-search.dto';
 
-export interface FindAllOptions {
-  search?: string;
-  searchFields?: string[];       // Fields to search in
-  filters?: Record<string, any>; // Extra filters
-  page?: number;                 // Page number (1-based)
-  pageSize?: number;             // Items per page
-  startDate?: Date;              // Filter start date
-  endDate?: Date;                // Filter end date
-  dateField?: 'createdAt' | 'updatedAt'; // Field to apply date filter
-}
+const prisma = new PrismaClient();
 
-export async function findAllWithSearchAndPagination<T extends { [key: string]: any }>(
-  model: any,                 // e.g., prisma.user
-  options: FindAllOptions
-): Promise<{ data: T[]; total: number }> {
+/**
+ * Common reusable function for pagination, search, filters & date criteria
+ */
+export async function findAllWithSearchAndCriteria<
+  T extends keyof PrismaClient,
+>(model: T, dto: PaginationSearchDto, searchFields: string[] = []) {
   const {
     search,
-    searchFields = [],
-    filters = {},
-    page = 1,
-    pageSize = 10,
+    page,
+    pageSize,
+    sortBy,
+    sortOrder,
     startDate,
     endDate,
-    dateField = 'createdAt',
-  } = options;
+    dateField, // optional: "createdAt" or "updatedAt"
+    filters = {},
+  } = dto;
 
-  const where: Prisma.Enumerable<Prisma.Enumerable<any>> = { ...filters };
+  // Convert roleId filter to number if it exists
+  filters.roleId ? (filters.roleId = Number(filters.roleId)) : null;
 
-  // Search
-  if (search && searchFields.length) {
-    where.OR = searchFields.map(field => ({
+  const where: any = { ...filters };
+
+  if (where.isDeleted) {
+    if (where.isDeleted == 'true') {
+      where.isDeleted = true;
+    } else {
+      where.isDeleted = false;
+    }
+  }
+
+  // search filter
+  if (search && searchFields.length > 0) {
+    where.OR = searchFields.map((field) => ({
       [field]: { contains: search, mode: 'insensitive' },
     }));
   }
 
-  // Date range
+  // date range filter
   if (startDate || endDate) {
-    where[dateField] = {};
-    if (startDate) where[dateField].gte = startDate;
-    if (endDate) where[dateField].lte = endDate;
+    const field = dateField || 'createdAt';
+    where[field] = {
+      gte: new Date(startDate),
+      lte: new Date(endDate),
+    };
   }
 
-  const skip = (page - 1) * pageSize;
-  const take = pageSize;
+  // pagination condition
+  const isPaginated =
+    page && pageSize && Number(page) > 0 && Number(pageSize) > 0;
 
+  // main query
   const [data, total] = await Promise.all([
-    model.findMany({ where, skip, take }),
-    model.count({ where }),
+    (prisma[model] as any).findMany({
+      where,
+      ...(isPaginated && {
+        skip: (Number(page) - 1) * Number(pageSize),
+        take: Number(pageSize),
+      }),
+      orderBy: {
+        createdAt: sortOrder,
+      },
+    }),
+    (prisma[model] as any).count({ where }),
   ]);
 
-  return { data, total };
+  return {
+    data,
+    total,
+    page: isPaginated ? Number(page) : null,
+    pageSize: isPaginated ? Number(pageSize) : null,
+    totalPages: isPaginated ? Math.ceil(total / Number(pageSize)) : null,
+  };
+}
+
+//Function find all without pagination and search
+
+export async function findAll<T extends keyof PrismaClient>(
+  model: T,
+  dto: PaginationSearchDto,
+) {
+  const { sortOrder, filters = {} } = dto;
+
+  const where: any = { ...filters };
+
+  if (where.isDeleted) {
+    if (where.isDeleted == 'true') {
+      where.isDeleted = true;
+    } else {
+      where.isDeleted = false;
+    }
+  }
+
+  // main query
+  const [data, total] = await Promise.all([
+    (prisma[model] as any).findMany({
+      where,
+      orderBy: {
+        createdAt: sortOrder,
+      },
+    }),
+    (prisma[model] as any).count({ where }),
+  ]);
+
+  return {
+    data,
+    total,
+  };
 }
