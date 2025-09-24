@@ -1,35 +1,15 @@
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { UserModule } from './user/user.module';
-import { AuthModule } from './auth/auth.module';
-import { join } from 'path';
-import { typeOrmConfig } from './config/database.config';
-import { MailerModule } from '@nestjs-modules/mailer';
-import { RoleModule } from './role/role.module';
-import { NotificationModule } from './notification/notification.module';
-import { ProductModule } from './product/product.module';
-import { CategoryModule } from './category/category.module';
-import { DriverModule } from './driver/driver.module';
-import { CarModule } from './car/car.module';
-import { BankModule } from './bank/bank.module';
-import { BankOperationModule } from './bankoperation/bank-operation.module';
-import { SupplierModule } from './supplier/supplier.module';
-
+import { Module} from '@nestjs/common';
+import { PrismaModule } from './prisma/prisma.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { CompanyModule } from './modules/company/company.module';
+import { UserModule } from './modules/user/user.module';
+import { RoleModule } from './modules/role/role.module';
+import { AuthModule } from './modules/auth/auth.module';
 @Module({
   imports: [
-    TypeOrmModule.forRoot(typeOrmConfig),
-    RoleModule,
-    UserModule,
-    AuthModule,
-    MailerModule,
-    NotificationModule,
-    ProductModule,
-    CategoryModule,
-    DriverModule,
-    CarModule,
-    BankModule,
-    BankOperationModule,
-    SupplierModule,
+   PrismaModule,CompanyModule, UserModule, RoleModule, AuthModule
   ],
+   controllers: [AppController],providers:[AppService]
 })
 export class AppModule {}
