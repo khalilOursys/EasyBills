@@ -7,47 +7,212 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Company {
-  id            Int      @id @default(autoincrement())
-  name          String
-  taxId         String
-  tradeRegister String
-  activity      String
-  manager       String
-  address       String
-  phone         String
-  fax           String? // <- optional
-  email         String
-  bankName      String
-  country       String
-  city          String
-  rib           String
-  zipCode       String? // <- optional
-  isDeleted     Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  users         User[]
+//////////////////////////////////////
+// ENUMS
+//////////////////////////////////////
+
+enum UserRole {
+  ADMIN
+  COMMERCIAL
 }
+
+enum PaymentMethod {
+  CASH
+  BANK
+  CHEQUE
+}
+
+enum PurchaseInvoiceType {
+  PURCHASE_ORDER       // Bon de commande
+  PURCHASE_INVOICE     // Facture achat
+  PURCHASE_REFUND      // Avoir fournisseur
+}
+
+enum SaleInvoiceType {
+  QUOTATION            // Devis
+  DELIVERY_NOTE        // Bon de livraison
+  SALE_INVOICE         // Facture vente
+  SALE_REFUND          // Avoir client
+}
+
+enum InvoiceStatus {
+  DRAFT
+  VALIDATED
+  PAID
+  CANCELLED
+}
+
+
+//////////////////////////////////////
+// USER
+//////////////////////////////////////
 
 model User {
   id        Int       @id @default(autoincrement())
-  name      String
   email     String    @unique
-  tel       String? // <- optional
   password  String
-  roleId    Int
-  role      Role      @relation(fields: [roleId], references: [id])
-  isDeleted Boolean   @default(false)
+  telephone            String?
+  firstName            String?
+  lastName             String?
+  role      UserRole  @default(COMMERCIAL)
   createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  company   Company[]
 }
 
-model Role {
-  id        Int      @id @default(autoincrement())
-  name      String   @unique
-  isDeleted Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users     User[]
+
+//////////////////////////////////////
+// CATEGORY
+//////////////////////////////////////
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  products    Product[]
+}
+
+
+//////////////////////////////////////
+// CLIENT
+//////////////////////////////////////
+
+model Client {
+  id              Int           @id @default(autoincrement())
+  name            String
+  phone           String?
+  address         String?
+  taxNumber       String?
+  saleInvoices    SaleInvoice[]
+}
+
+
+//////////////////////////////////////
+// SUPPLIER
+//////////////////////////////////////
+
+model Supplier {
+  id               Int                   @id @default(autoincrement())
+  code             String
+  name             String
+  taxNumber        String?
+  phone            String?
+  address          String?
+  bankRib          String?
+  purchaseInvoices PurchaseInvoice[]
+}
+
+
+//////////////////////////////////////
+// PRODUCT
+//////////////////////////////////////
+
+model Product {
+  id            Int       @id @default(autoincrement())
+  reference     String
+  internalCode  String
+  name          String
+
+  stock         Int       @default(0)
+  minStock      Int       @default(0)
+  purchasePrice Float
+  marginPercent Float
+  salePrice     Float
+  discount      Float     @default(0)
+  vat           Float     @default(19)
+
+  categoryId Int
+  category   Category     @relation(fields: [categoryId], references: [id])
+
+  purchaseInvoiceItems PurchaseInvoiceItem[]
+  saleInvoiceItems     SaleInvoiceItem[]
+}
+
+
+//////////////////////////////////////
+// PURCHASE INVOICE (ACHAT)
+//////////////////////////////////////
+
+model PurchaseInvoice {
+  id            Int                     @id @default(autoincrement())
+  invoiceNumber String
+  date          DateTime                @default(now())
+  type          PurchaseInvoiceType
+  status        InvoiceStatus           @default(DRAFT)
+
+  pdfUrl        String?
+
+  supplierId    Int
+  supplier      Supplier                @relation(fields: [supplierId], references: [id])
+
+  items         PurchaseInvoiceItem[] 
+
+  totalHT       Float                   @default(0)
+  totalTTC      Float                   @default(0)
+
+  createdAt     DateTime                @default(now())
+}
+
+model PurchaseInvoiceItem {
+  id        Int     @id @default(autoincrement())
+  quantity  Int
+  price     Float
+
+  invoiceId Int
+  productId Int
+
+  invoice   PurchaseInvoice @relation(fields: [invoiceId], references: [id])
+  product   Product         @relation(fields: [productId], references: [id])
+}
+
+
+//////////////////////////////////////
+// SALE INVOICE (VENTE)
+//////////////////////////////////////
+
+model SaleInvoice {
+  id            Int                @id @default(autoincrement())
+  invoiceNumber String
+  date          DateTime           @default(now())
+  type          SaleInvoiceType
+  status        InvoiceStatus      @default(DRAFT)
+
+  clientId      Int
+  client        Client             @relation(fields: [clientId], references: [id])
+
+  items         SaleInvoiceItem[]
+
+  totalHT       Float              @default(0)
+  totalTTC      Float              @default(0)
+
+  createdAt     DateTime           @default(now())
+}
+
+model SaleInvoiceItem {
+  id        Int    @id @default(autoincrement())
+  quantity  Int
+  price     Float
+
+  invoiceId Int
+  productId Int
+
+  invoice   SaleInvoice @relation(fields: [invoiceId], references: [id])
+  product   Product     @relation(fields: [productId], references: [id])
+}
+
+
+//////////////////////////////////////
+// PAYMENTS
+//////////////////////////////////////
+
+
+
+//////////////////////////////////////
+// COMPANY SETTINGS
+//////////////////////////////////////
+
+model CompanySettings {
+  id          Int     @id @default(autoincrement())
+  companyName String?
+  address     String?
+  phone       String?
+  taxNumber   String?
 }

@@ -1,28 +1,38 @@
-/* eslint-disable prettier/prettier */
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { NestExpressApplication } from '@nestjs/platform-express';
-import * as dotenv from 'dotenv';
-import { join } from 'path';
 import { ValidationPipe } from '@nestjs/common';
-dotenv.config();
+import * as express from 'express';
+import { join } from 'path';
+
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
-  // Enable CORS
+  const app = await NestFactory.create(AppModule);
+
+  // Global validation pipe
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      transformOptions: { enableImplicitConversion: true },
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+
+  // Correct CORS config for both dev and production
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://192.168.248.172:8081'], // Allow frontend on these ports
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:3002',
+      'http://localhost',
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
   });
 
-  // Serve static files from the uploads directory
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
-    prefix: '/uploads/', // This will serve files from the uploads directory
-  });
+  // Serve static files (e.g., images)
+  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
-  // Set global prefix for all routes
-  app.setGlobalPrefix('api');
-
-  await app.listen(process.env.PORT || 3000);
+  await app.listen(3002);
 }
-//Creating new Branch
 bootstrap();

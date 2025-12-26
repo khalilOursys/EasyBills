@@ -1,12 +1,17 @@
 import { Controller, Get } from '@nestjs/common';
-import { AppService } from './app.service';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  @Get('/health')
+  healthCheck() {
+    return { status: 'ok', timestamp: new Date() };
+  }
 
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  @Get('/test-products')
+  async testProducts() {
+    return prisma.product.findMany();
   }
 }
