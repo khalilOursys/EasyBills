@@ -39,13 +39,6 @@ export class UsersService {
   async findAll() {
     return await this.prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        // Don't return password
-      },
     });
   }
 
