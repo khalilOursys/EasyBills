@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { loginFetch } from "../../../Redux/usersReduce";
+import { loginFetch } from "../../../Redux/usersSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -22,11 +22,6 @@ function LoginPage() {
         {msg}
       </strong>
     );
-  const settings = useSelector((state) => state.settings.entities);
-
-  if (settings.length > 0) {
-    document.title = settings[0].name;
-  }
   const dispatch = useDispatch();
   const [cardClasses, setCardClasses] = useState("card-hidden");
   const [login, setLogin] = useState("");
@@ -54,7 +49,7 @@ function LoginPage() {
     const promise = new Promise((resolve, reject) => {
       setTimeout(async () => {
         var root = await dispatch(
-          loginFetch({ login: login, password: password })
+          loginFetch({ email: login, password: password })
         );
         var entities = root.payload;
         resolve(entities);
@@ -62,13 +57,14 @@ function LoginPage() {
     });
 
     promise.then((value) => {
-      if (value.message !== true) {
-        notifyErr(value.message);
+      console.log(value);
+
+      if (data.message) {
+        notifyErr(data.message);
       } else {
-        localStorage.setItem("x-access-token", value.token);
-        localStorage.setItem("idUser", value.data.id);
-        localStorage.setItem("id_role", value.data.id_role);
-        window.location.replace("/profile");
+        localStorage.setItem("x-access-token", data.access_token);
+        localStorage.setItem("user", data.user);
+        window.location.replace("/users");
       }
       /* if(value.message !== true ){        
         notifyErr(value.message);

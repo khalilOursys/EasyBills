@@ -6,7 +6,6 @@ import { Collapse, Nav } from "react-bootstrap";
 import { useSelector } from "react-redux";
 
 function Sidebar({ routes, background, users }) {
-  const { entities } = useSelector((state) => state.settings);
   let location = useLocation();
   const [state, setState] = React.useState({});
   var token = localStorage.getItem("x-access-token");
@@ -29,7 +28,8 @@ function Sidebar({ routes, background, users }) {
   const createLinks = (routes) => {
     return routes.map((prop, key) => {
       var st = {};
-      if (prop.id_role.includes(id_role)) {
+      //prop.id_role.includes(id_role)
+      if (prop.id_role.includes("ADMIN")) {
         if (prop.redirect) {
           return null;
         }

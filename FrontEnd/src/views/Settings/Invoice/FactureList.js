@@ -1,19 +1,16 @@
 import { Button, Card, Container, Row, Col } from "react-bootstrap";
 import React, { useEffect, useCallback } from "react";
 import {
-  fetchUsers,
-  userChangeEtat,
-  userDeleted,
-} from "../../../Redux/usersSlice";
+  factureDeleted,
+  getFactures,
+} from "../../Redux/factureReduce";
 import { useDispatch } from "react-redux";
 import { useHistory } from "react-router-dom";
 import MaterialReactTable from "material-react-table";
 import { toast, ToastContainer } from "react-toastify";
 import SweetAlert from "react-bootstrap-sweetalert";
-
 // core components
-function ListUser({ obj }) {
-  const [alert, setAlert] = React.useState(null);
+function ListFacture() {
   const notify = (type, msg) => {
     if (type === 1)
       toast.success(
@@ -30,26 +27,19 @@ function ListUser({ obj }) {
         </strong>
       );
   };
+  const [alert, setAlert] = React.useState(null);
   const navigate = useHistory();
   const dispatch = useDispatch();
   const [entities, setEntities] = React.useState([]);
   const [columns] = React.useState([
     //column definitions...
     {
-      header: "First name",
-      accessorKey: "firstName",
+      header: "Numéro",
+      accessorKey: "num",
     },
     {
-      header: "lastName",
-      accessorKey: "lastName",
-    },
-    {
-      header: "Role",
-      accessorKey: "role",
-    },
-    {
-      header: "E-mail",
-      accessorKey: "email",
+      header: "Date",
+      accessorKey: "date",
     },
     {
       accessorKey: "id",
@@ -58,7 +48,7 @@ function ListUser({ obj }) {
         <div className="actions-right block_action">
           <Button
             onClick={() => {
-              navigate.push("/user/update/" + cell.row.original.id);
+              navigate.push("/facture/update/" + cell.row.original.id);
             }}
             variant="warning"
             size="sm"
@@ -77,25 +67,68 @@ function ListUser({ obj }) {
           >
             <i className="fa fa-trash" id={"idLigne_" + cell.row.original.id} />
           </Button>
+
+          <Button
+            onClick={() => {
+              navigate.push("/facture/detail/" + cell.row.original.id);
+            }}
+            variant="info"
+            size="sm"
+            className="text-info btn-link edit"
+          >
+            <i className="fa fa-eye" />
+          </Button>
         </div>
       ),
     },
-    //end
+  
+  
   ]);
   function ajouter() {
-    navigate.push("/user/add");
+    navigate.push("/facture/add");
   }
 
-  const getUser = useCallback(async () => {
-    var response = await dispatch(fetchUsers());
-    setEntities(response.payload);
+  const fetchFactures = useCallback(async () => {
+    var response = await dispatch(getFactures({typeFacture: 1}));
+    var data = await (response.payload.data)
+    setEntities(data);
   }, [dispatch]);
+
+  function factureDelete(id) {
+    dispatch(factureDeleted(id))
+      .unwrap()
+      .then((response) => {
+        if (response.status === 200) {
+          setTimeout(async () => {
+            notify(1, "Supression avec succes")
+            fetchFactures();
+            hideAlert();
+          }, 1000);
+        }
+      })
+      .catch((error) => {
+        /* console.error('Delete user error:', error); */
+        if (error && error.status) {
+          const jsonObject = JSON.parse(error.error);
+          notify(2, jsonObject.message);
+          setTimeout(async () => {
+            hideAlert();
+          }, 1000);
+        } else {
+          notify(2, 'An unexpected error occurred.');
+        }
+      });
+  }
+  const hideAlert = () => {
+    setAlert(null);
+  };
+
   const confirmMessage = (id, e) => {
     setAlert(
       <SweetAlert
         style={{ display: "block", marginTop: "-100px" }}
-        title="Vous éte sure de supprime cette user?"
-        onConfirm={() => deleteUser(id, e)}
+        title="Vous éte sure de supprime ce facture?"
+        onConfirm={() => factureDelete(id, e)}
         onCancel={() => hideAlert()}
         confirmBtnBsStyle="info"
         cancelBtnBsStyle="danger"
@@ -103,24 +136,14 @@ function ListUser({ obj }) {
         cancelBtnText="Non"
         showCancel
       >
-        {/* Vous éte sure de supprime cette User? */}
       </SweetAlert>
     );
   };
-  const hideAlert = () => {
-    setAlert(null);
-  };
-  function deleteUser(id, e) {
-    dispatch(userDeleted({ id })).then((val) => {
-      notify(1, "User supprimer avec succes");
-      getUser();
-      hideAlert();
-    });
-  }
+
 
   useEffect(() => {
-    getUser();
-  }, [getUser]);
+    fetchFactures();
+  }, []);
 
   function ListTable({ list }) {
     return (
@@ -141,8 +164,8 @@ function ListUser({ obj }) {
   return (
     <>
       <Container fluid>
-        {alert}
         <ToastContainer />
+        {alert}
         <Row>
           <Col md="8">
             <Button
@@ -155,11 +178,11 @@ function ListUser({ obj }) {
               <span className="btn-label">
                 <i className="fas fa-plus"></i>
               </span>
-              Ajouter un utilisateur
+              Ajouter un Facture
             </Button>
           </Col>
           <Col md="12">
-            <h4 className="title">Liste des utilisateurs</h4>
+            <h4 className="title">Liste des Factures</h4>
             <Card>
               <Card.Body>
                 <ListTable list={entities}></ListTable>
@@ -172,4 +195,4 @@ function ListUser({ obj }) {
   );
 }
 
-export default ListUser;
+export default ListFacture;

@@ -4,7 +4,7 @@ import validator from "validator";
 // react-bootstrap components
 import { Button, Card, Form, Container, Row, Col } from "react-bootstrap";
 import { useParams, useHistory } from "react-router-dom";
-import { userAdded, userGetById } from "../../../Redux/usersReduce";
+import { userAdded, userGetById } from "../../../Redux/usersSlice";
 import { fetchRole } from "../../../Redux/roleReduce";
 import { useDispatch } from "react-redux";
 import { toast, ToastContainer } from "react-toastify";
@@ -113,7 +113,7 @@ function AjouterUser() {
       role > 0
     ) {
       dispatch(
-        userAdded({ nom, email, tel, login, password, id, etat, role })
+        userAdded({ nom, email, tel, login, password, etat, role })
       ).then((data) => {
         if (data.payload === true) {
           if (isNaN(location.id) === true) notify(1, "Insertion avec succes");

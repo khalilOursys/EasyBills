@@ -1,12 +1,11 @@
+// src/store.js
 import { configureStore } from "@reduxjs/toolkit";
-import usersReducer from "./Redux/usersReduce";
-import roleReducer from "./Redux/roleReduce";
-import settingsReducer from "./Redux/settingsReduce";
+import usersSlicer from "./Redux/usersSlice";
+
 export default configureStore({
   reducer: {
-    users: usersReducer,
-    role: roleReducer,
-    settings: settingsReducer,
+    // Existing reducers
+    users: usersSlicer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({ serializableCheck: false }),

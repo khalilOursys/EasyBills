@@ -9,16 +9,14 @@ import { useDispatch, useSelector } from "react-redux";
 import routes from "./routes";
 
 function RootBase() {
-  const dispatch = useDispatch();
-  const { users } = useSelector((state) => state.users);
-  const [entities, setEntities] = React.useState([]);
   const id_role = localStorage.getItem("id_role");
   const getRoutes = (routes) => {
     return routes.map((prop, key) => {
       if (prop.collapse) {
         return getRoutes(prop.views);
       }
-      if (prop.id_role.includes(id_role)) {
+      //prop.id_role.includes(id_role)
+      if (prop.id_role.includes("ADMIN")) {
         var component = React.createElement(
           Components[prop.componentStr],
           { obj: null },
