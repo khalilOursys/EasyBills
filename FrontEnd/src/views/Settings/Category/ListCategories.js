@@ -1,18 +1,17 @@
-import { Button, Card, Container, Row, Col } from "react-bootstrap";
+// src/components/Categories/ListCategories.js
 import React, { useEffect, useCallback } from "react";
-import {
-  fetchUsers,
-  userChangeEtat,
-  userDeleted,
-} from "../../../Redux/usersSlice";
+import { Button, Card, Container, Row, Col } from "react-bootstrap";
 import { useDispatch } from "react-redux";
 import { useHistory } from "react-router-dom";
+import {
+  fetchCategories,
+  categoryDeleted,
+} from "../../../Redux/categoriesSlice";
 import MaterialReactTable from "material-react-table";
 import { toast, ToastContainer } from "react-toastify";
 import SweetAlert from "react-bootstrap-sweetalert";
 
-// core components
-function ListUser({ obj }) {
+function ListCategories({ obj }) {
   const [alert, setAlert] = React.useState(null);
   const notify = (type, msg) => {
     if (type === 1)
@@ -30,35 +29,38 @@ function ListUser({ obj }) {
         </strong>
       );
   };
+
   const navigate = useHistory();
   const dispatch = useDispatch();
   const [entities, setEntities] = React.useState([]);
+
   const [columns] = React.useState([
-    //column definitions...
     {
-      header: "First name",
-      accessorKey: "firstName",
+      header: "ID",
+      accessorKey: "id",
     },
     {
-      header: "lastName",
-      accessorKey: "lastName",
+      header: "Nom",
+      accessorKey: "name",
     },
     {
-      header: "Role",
-      accessorKey: "role",
+      header: "Description",
+      accessorKey: "description",
     },
     {
-      header: "E-mail",
-      accessorKey: "email",
+      header: "Produits",
+      accessorKey: "products",
+      Cell: ({ cell }) =>
+        cell.row.original.products ? cell.row.original.products.length : 0,
     },
     {
       accessorKey: "id",
-      header: "actions",
+      header: "Actions",
       Cell: ({ cell, row }) => (
         <div className="actions-right block_action">
           <Button
             onClick={() => {
-              navigate.push("/user/update/" + cell.row.original.id);
+              navigate.push("/categories/update/" + cell.row.original.id);
             }}
             variant="warning"
             size="sm"
@@ -80,47 +82,48 @@ function ListUser({ obj }) {
         </div>
       ),
     },
-    //end
   ]);
+
   function ajouter() {
-    navigate.push("/user/add");
+    navigate.push("/categories/add");
   }
 
-  const getUser = useCallback(async () => {
-    var response = await dispatch(fetchUsers());
+  const getCategories = useCallback(async () => {
+    var response = await dispatch(fetchCategories());
     setEntities(response.payload);
   }, [dispatch]);
+
   const confirmMessage = (id, e) => {
     setAlert(
       <SweetAlert
         style={{ display: "block", marginTop: "-100px" }}
-        title="Vous éte sure de supprime cette user?"
-        onConfirm={() => deleteUser(id, e)}
+        title="Êtes-vous sûr de vouloir supprimer cette catégorie?"
+        onConfirm={() => deleteCategory(id, e)}
         onCancel={() => hideAlert()}
         confirmBtnBsStyle="info"
         cancelBtnBsStyle="danger"
         confirmBtnText="Oui"
         cancelBtnText="Non"
         showCancel
-      >
-        {/* Vous éte sure de supprime cette User? */}
-      </SweetAlert>
+      />
     );
   };
+
   const hideAlert = () => {
     setAlert(null);
   };
-  function deleteUser(id, e) {
-    dispatch(userDeleted({ id })).then((val) => {
-      notify(1, "User supprimer avec succes");
-      getUser();
+
+  function deleteCategory(id, e) {
+    dispatch(categoryDeleted(id)).then((val) => {
+      notify(1, "Catégorie supprimée avec succès");
+      getCategories();
       hideAlert();
     });
   }
 
   useEffect(() => {
-    getUser();
-  }, [getUser]);
+    getCategories();
+  }, [getCategories]);
 
   function ListTable({ list }) {
     return (
@@ -155,11 +158,11 @@ function ListUser({ obj }) {
               <span className="btn-label">
                 <i className="fas fa-plus"></i>
               </span>
-              Ajouter un utilisateur
+              Ajouter une catégorie
             </Button>
           </Col>
           <Col md="12">
-            <h4 className="title">Liste des utilisateurs</h4>
+            <h4 className="title">Liste des catégories</h4>
             <Card>
               <Card.Body>
                 <ListTable list={entities}></ListTable>
@@ -172,4 +175,4 @@ function ListUser({ obj }) {
   );
 }
 
-export default ListUser;
+export default ListCategories;

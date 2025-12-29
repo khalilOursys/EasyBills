@@ -16,7 +16,7 @@ import store from "./store";
 import { getSettings } from "./Redux/settingsReduce";
 import LoginPage from "./views/Settings/User/LoginPage";
 import jwt_decode from "jwt-decode";
-import { getDetailUser } from "./Redux/usersReduce";
+import { getDetailUser } from "./Redux/usersSlice";
 import RootBase from "./RootBase";
 /* import jwt from "jsonwebtoken"; */
 

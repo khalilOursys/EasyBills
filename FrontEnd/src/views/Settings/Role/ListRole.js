@@ -3,7 +3,7 @@ import { Button, Card, Container, Row, Col } from "react-bootstrap";
 import React, { useEffect, useCallback, useMemo } from "react";
 import { fetchRole, roleDeleted } from "../../../Redux/roleReduce";
 import { useDispatch } from "react-redux";
-import { verification } from "../../../Redux/usersReduce";
+import { verification } from "../../../Redux/usersSlice";
 import { toast, ToastContainer } from "react-toastify";
 import MaterialReactTable from "material-react-table";
 import { useHistory } from "react-router";

@@ -1,18 +1,14 @@
-import { Button, Card, Container, Row, Col } from "react-bootstrap";
+// src/components/Products/ListProducts.js
 import React, { useEffect, useCallback } from "react";
-import {
-  fetchUsers,
-  userChangeEtat,
-  userDeleted,
-} from "../../../Redux/usersSlice";
+import { Button, Card, Container, Row, Col, Badge } from "react-bootstrap";
 import { useDispatch } from "react-redux";
 import { useHistory } from "react-router-dom";
+import { fetchProducts, productDeleted } from "../../../Redux/productsSlice";
 import MaterialReactTable from "material-react-table";
 import { toast, ToastContainer } from "react-toastify";
 import SweetAlert from "react-bootstrap-sweetalert";
 
-// core components
-function ListUser({ obj }) {
+function ListProducts({ obj }) {
   const [alert, setAlert] = React.useState(null);
   const notify = (type, msg) => {
     if (type === 1)
@@ -30,35 +26,59 @@ function ListUser({ obj }) {
         </strong>
       );
   };
+
   const navigate = useHistory();
   const dispatch = useDispatch();
   const [entities, setEntities] = React.useState([]);
+
   const [columns] = React.useState([
-    //column definitions...
     {
-      header: "First name",
-      accessorKey: "firstName",
+      header: "Référence",
+      accessorKey: "reference",
     },
     {
-      header: "lastName",
-      accessorKey: "lastName",
+      header: "Code Interne",
+      accessorKey: "internalCode",
     },
     {
-      header: "Role",
-      accessorKey: "role",
+      header: "Nom",
+      accessorKey: "name",
     },
     {
-      header: "E-mail",
-      accessorKey: "email",
+      header: "Catégorie",
+      accessorKey: "category.name",
+    },
+    {
+      header: "Stock",
+      accessorKey: "stock",
+      Cell: ({ cell }) => (
+        <Badge
+          bg={
+            cell.getValue() < cell.row.original.minStock ? "danger" : "success"
+          }
+        >
+          {cell.getValue()}
+        </Badge>
+      ),
+    },
+    {
+      header: "Prix Achat",
+      accessorKey: "purchasePrice",
+      Cell: ({ cell }) => `${cell.getValue().toFixed(2)} DH`,
+    },
+    {
+      header: "Prix Vente",
+      accessorKey: "salePrice",
+      Cell: ({ cell }) => `${cell.getValue().toFixed(2)} DH`,
     },
     {
       accessorKey: "id",
-      header: "actions",
+      header: "Actions",
       Cell: ({ cell, row }) => (
         <div className="actions-right block_action">
           <Button
             onClick={() => {
-              navigate.push("/user/update/" + cell.row.original.id);
+              navigate.push("/products/update/" + cell.row.original.id);
             }}
             variant="warning"
             size="sm"
@@ -67,7 +87,6 @@ function ListUser({ obj }) {
             <i className="fa fa-edit" />
           </Button>
           <Button
-            id={"idLigne_" + cell.row.original.id}
             onClick={(e) => {
               confirmMessage(cell.row.original.id, e);
             }}
@@ -75,52 +94,53 @@ function ListUser({ obj }) {
             size="sm"
             className="text-danger btn-link delete"
           >
-            <i className="fa fa-trash" id={"idLigne_" + cell.row.original.id} />
+            <i className="fa fa-trash" />
           </Button>
         </div>
       ),
     },
-    //end
   ]);
+
   function ajouter() {
-    navigate.push("/user/add");
+    navigate.push("/products/add");
   }
 
-  const getUser = useCallback(async () => {
-    var response = await dispatch(fetchUsers());
+  const getProducts = useCallback(async () => {
+    var response = await dispatch(fetchProducts());
     setEntities(response.payload);
   }, [dispatch]);
+
   const confirmMessage = (id, e) => {
     setAlert(
       <SweetAlert
         style={{ display: "block", marginTop: "-100px" }}
-        title="Vous éte sure de supprime cette user?"
-        onConfirm={() => deleteUser(id, e)}
+        title="Êtes-vous sûr de vouloir supprimer ce produit?"
+        onConfirm={() => deleteProduct(id, e)}
         onCancel={() => hideAlert()}
         confirmBtnBsStyle="info"
         cancelBtnBsStyle="danger"
         confirmBtnText="Oui"
         cancelBtnText="Non"
         showCancel
-      >
-        {/* Vous éte sure de supprime cette User? */}
-      </SweetAlert>
+      />
     );
   };
+
   const hideAlert = () => {
     setAlert(null);
   };
-  function deleteUser(id, e) {
-    dispatch(userDeleted({ id })).then((val) => {
-      notify(1, "User supprimer avec succes");
-      getUser();
+
+  function deleteProduct(id, e) {
+    dispatch(productDeleted(id)).then((val) => {
+      notify(1, "Produit supprimé avec succès");
+      getProducts();
       hideAlert();
     });
   }
 
   useEffect(() => {
-    getUser();
-  }, [getUser]);
+    getProducts();
+  }, [getProducts]);
 
   function ListTable({ list }) {
     return (
@@ -155,11 +175,11 @@ function ListUser({ obj }) {
               <span className="btn-label">
                 <i className="fas fa-plus"></i>
               </span>
-              Ajouter un utilisateur
+              Ajouter un produit
             </Button>
           </Col>
           <Col md="12">
-            <h4 className="title">Liste des utilisateurs</h4>
+            <h4 className="title">Liste des produits</h4>
             <Card>
               <Card.Body>
                 <ListTable list={entities}></ListTable>
@@ -172,4 +192,4 @@ function ListUser({ obj }) {
   );
 }
 
-export default ListUser;
+export default ListProducts;
