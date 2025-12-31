@@ -7,6 +7,7 @@ import { CategoriesModule } from './categories/categories.module';
 import { Module } from '@nestjs/common';
 import { ClientsModule } from './clients/clients.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
+import { PurchaseInvoiceModule } from './purchase-invoice/purchase-invoice.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
     CategoriesModule,
     ClientsModule,
     SuppliersModule,
+    PurchaseInvoiceModule,
   ],
   controllers: [AppController],
   providers: [PrismaService],
