@@ -1,16 +1,16 @@
-import { Button, Card, Container, Row, Col } from "react-bootstrap";
-import React, { useEffect, useCallback } from "react";
-import {
-  factureDeleted,
-  getFactures,
-} from "../../Redux/factureReduce";
+import { Button, Card, Container, Row, Col, Badge } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
 import { useHistory } from "react-router-dom";
 import MaterialReactTable from "material-react-table";
 import { toast, ToastContainer } from "react-toastify";
 import SweetAlert from "react-bootstrap-sweetalert";
-// core components
-function ListFacture() {
+import {
+  deletePurchaseInvoice,
+  fetchPurchaseInvoices,
+} from "../../../Redux/purchaseInvoiceSlice";
+
+function ListPurchaseInvoice() {
   const notify = (type, msg) => {
     if (type === 1)
       toast.success(
@@ -27,172 +27,199 @@ function ListFacture() {
         </strong>
       );
   };
-  const [alert, setAlert] = React.useState(null);
+
+  const [alert, setAlert] = useState(null);
   const navigate = useHistory();
   const dispatch = useDispatch();
-  const [entities, setEntities] = React.useState([]);
-  const [columns] = React.useState([
-    //column definitions...
+  const [invoices, setInvoices] = useState([]);
+
+  const columns = [
     {
       header: "Numéro",
-      accessorKey: "num",
+      accessorKey: "invoiceNumber",
     },
     {
       header: "Date",
       accessorKey: "date",
+      Cell: ({ cell }) => new Date(cell.getValue()).toLocaleDateString(),
     },
     {
+      header: "Fournisseur",
+      accessorKey: "supplier.name",
+    },
+    {
+      header: "Type",
+      accessorKey: "type",
+      Cell: ({ cell }) => <Badge bg="info">{cell.getValue()}</Badge>,
+    },
+    {
+      header: "Statut",
+      accessorKey: "status",
+      Cell: ({ cell }) => {
+        const status = cell.getValue();
+        const variant =
+          {
+            DRAFT: "warning",
+            VALIDATED: "primary",
+            PAID: "success",
+            CANCELLED: "danger",
+          }[status] || "secondary";
+
+        return (
+          <Badge bg={variant}>
+            {status === "DRAFT"
+              ? "Brouillon"
+              : status === "VALIDATED"
+              ? "Validée"
+              : status === "PAID"
+              ? "Payée"
+              : "Annulée"}
+          </Badge>
+        );
+      },
+    },
+    {
+      header: "Total HT (€)",
+      accessorKey: "totalHT",
+      Cell: ({ cell }) => parseFloat(cell.getValue()).toFixed(2),
+    },
+    {
+      header: "Total TTC (€)",
+      accessorKey: "totalTTC",
+      Cell: ({ cell }) => parseFloat(cell.getValue()).toFixed(2),
+    },
+    {
+      header: "Actions",
       accessorKey: "id",
-      header: "actions",
-      Cell: ({ cell, row }) => (
-        <div className="actions-right block_action">
+      Cell: ({ cell }) => (
+        <div className="actions-right">
           <Button
-            onClick={() => {
-              navigate.push("/facture/update/" + cell.row.original.id);
-            }}
+            onClick={() =>
+              navigate.push("/purchase-invoice/update/" + cell.getValue())
+            }
             variant="warning"
             size="sm"
-            className="text-warning btn-link edit"
+            className="text-warning btn-link edit mr-1"
           >
             <i className="fa fa-edit" />
           </Button>
           <Button
-            id={"idLigne_" + cell.row.original.id}
-            onClick={(e) => {
-              confirmMessage(cell.row.original.id, e);
-            }}
+            onClick={(e) => confirmDelete(cell.getValue(), e)}
             variant="danger"
             size="sm"
-            className="text-danger btn-link delete"
+            className="text-danger btn-link delete mr-1"
           >
-            <i className="fa fa-trash" id={"idLigne_" + cell.row.original.id} />
+            <i className="fa fa-trash" />
           </Button>
-
           <Button
-            onClick={() => {
-              navigate.push("/facture/detail/" + cell.row.original.id);
-            }}
+            onClick={() =>
+              navigate.push("/purchase-invoice/detail/" + cell.getValue())
+            }
             variant="info"
             size="sm"
-            className="text-info btn-link edit"
+            className="text-info btn-link"
           >
             <i className="fa fa-eye" />
           </Button>
         </div>
       ),
     },
-  
-  
-  ]);
-  function ajouter() {
-    navigate.push("/facture/add");
-  }
+  ];
 
-  const fetchFactures = useCallback(async () => {
-    var response = await dispatch(getFactures({typeFacture: 1}));
-    var data = await (response.payload.data)
-    setEntities(data);
-  }, [dispatch]);
+  const fetchInvoices = async () => {
+    try {
+      const response = await dispatch(fetchPurchaseInvoices());
+      if (response.payload) {
+        setInvoices(response.payload);
+      }
+    } catch (error) {
+      notify(2, "Erreur lors du chargement des factures d'achat");
+    }
+  };
 
-  function factureDelete(id) {
-    dispatch(factureDeleted(id))
+  const handleDelete = (id) => {
+    dispatch(deletePurchaseInvoice(id))
       .unwrap()
       .then((response) => {
         if (response.status === 200) {
-          setTimeout(async () => {
-            notify(1, "Supression avec succes")
-            fetchFactures();
-            hideAlert();
-          }, 1000);
+          notify(1, "Facture d'achat supprimée avec succès");
+          fetchInvoices();
         }
       })
       .catch((error) => {
-        /* console.error('Delete user error:', error); */
-        if (error && error.status) {
-          const jsonObject = JSON.parse(error.error);
-          notify(2, jsonObject.message);
-          setTimeout(async () => {
-            hideAlert();
-          }, 1000);
-        } else {
-          notify(2, 'An unexpected error occurred.');
-        }
+        notify(2, "Erreur lors de la suppression");
+      })
+      .finally(() => {
+        hideAlert();
       });
-  }
+  };
+
   const hideAlert = () => {
     setAlert(null);
   };
 
-  const confirmMessage = (id, e) => {
+  const confirmDelete = (id, e) => {
     setAlert(
       <SweetAlert
         style={{ display: "block", marginTop: "-100px" }}
-        title="Vous éte sure de supprime ce facture?"
-        onConfirm={() => factureDelete(id, e)}
-        onCancel={() => hideAlert()}
-        confirmBtnBsStyle="info"
-        cancelBtnBsStyle="danger"
-        confirmBtnText="Oui"
-        cancelBtnText="Non"
+        title="Êtes-vous sûr de vouloir supprimer cette facture d'achat?"
+        onConfirm={() => handleDelete(id)}
+        onCancel={hideAlert}
+        confirmBtnBsStyle="danger"
+        cancelBtnBsStyle="secondary"
+        confirmBtnText="Oui, supprimer"
+        cancelBtnText="Annuler"
         showCancel
-      >
-      </SweetAlert>
+      />
     );
   };
 
-
   useEffect(() => {
-    fetchFactures();
+    fetchInvoices();
   }, []);
 
-  function ListTable({ list }) {
-    return (
-      <MaterialReactTable
-        columns={columns}
-        data={list}
-        enableColumnActions={true}
-        enableColumnFilters={true}
-        enablePagination={true}
-        enableSorting={true}
-        enableBottomToolbar={true}
-        enableTopToolbar={true}
-        muiTableBodyRowProps={{ hover: false }}
-      />
-    );
-  }
-
   return (
-    <>
-      <Container fluid>
-        <ToastContainer />
-        {alert}
-        <Row>
-          <Col md="8">
-            <Button
-              id="saveBL"
-              className="btn-wd  mr-1 float-left"
-              type="button"
-              variant="success"
-              onClick={ajouter}
-            >
-              <span className="btn-label">
-                <i className="fas fa-plus"></i>
-              </span>
-              Ajouter un Facture
-            </Button>
-          </Col>
-          <Col md="12">
-            <h4 className="title">Liste des Factures</h4>
-            <Card>
-              <Card.Body>
-                <ListTable list={entities}></ListTable>
-              </Card.Body>
-            </Card>
-          </Col>
-        </Row>
-      </Container>
-    </>
+    <Container fluid>
+      <ToastContainer />
+      {alert}
+      <Row>
+        <Col md="12" className="mb-3">
+          <Button
+            className="btn-wd mr-1"
+            type="button"
+            variant="success"
+            onClick={() => navigate.push("/purchase-invoice/add")}
+          >
+            <span className="btn-label">
+              <i className="fas fa-plus"></i>
+            </span>
+            Nouvelle facture d'achat
+          </Button>
+        </Col>
+        <Col md="12">
+          <h4 className="title">Factures d'Achat</h4>
+          <Card>
+            <Card.Body>
+              <MaterialReactTable
+                columns={columns}
+                data={invoices}
+                enableColumnActions
+                enableColumnFilters
+                enablePagination
+                enableSorting
+                enableBottomToolbar
+                enableTopToolbar
+                muiTableBodyRowProps={{ hover: false }}
+                localization={{
+                  noRecordsToDisplay: "Aucune facture d'achat trouvée",
+                }}
+              />
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
+    </Container>
   );
 }
 
-export default ListFacture;
+export default ListPurchaseInvoice;

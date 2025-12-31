@@ -14,6 +14,10 @@ import ListClients from "./views/Settings/Client/ListClients";
 import AjouterSupplier from "./views/Settings/Supplier/AjouterSupplier";
 import ListSuppliers from "./views/Settings/Supplier/ListSuppliers";
 
+// Import Purchase Invoice components
+import ListPurchaseInvoice from "./views/Settings/Invoice/FactureList";
+import AddPurchaseInvoice from "./views/Settings/Invoice/AddFacture";
+
 const dashboardRoutes = [
   // ==================== USER ====================
   {
@@ -76,15 +80,15 @@ const dashboardRoutes = [
   {
     path: "/categories/list",
     name: "Categories",
-    icon: "fas fa-tags", // Changed from fa-list-alt to fa-tags
+    icon: "fas fa-tags",
     component: ListCategories,
-    id_role: "ADMIN", // ADMIN and COMMERCIAL
+    id_role: "ADMIN",
     componentStr: "ListCategories",
   },
   {
     path: "/categories/add",
     name: "Add Category",
-    icon: "fas fa-plus-square", // Changed from fa-plus to fa-plus-square
+    icon: "fas fa-plus-square",
     component: AjouterCategory,
     componentStr: "AjouterCategory",
     id_role: "ADMIN",
@@ -104,7 +108,7 @@ const dashboardRoutes = [
   {
     path: "/products/list",
     name: "Products",
-    icon: "fas fa-boxes", // Changed from fa-box to fa-boxes
+    icon: "fas fa-boxes",
     component: ListProducts,
     id_role: "ADMIN",
     componentStr: "ListProducts",
@@ -112,7 +116,7 @@ const dashboardRoutes = [
   {
     path: "/products/add",
     name: "Add Product",
-    icon: "fas fa-cart-plus", // Changed from fa-plus to fa-cart-plus
+    icon: "fas fa-cart-plus",
     component: AjouterProduct,
     componentStr: "AjouterProduct",
     id_role: "ADMIN",
@@ -132,7 +136,7 @@ const dashboardRoutes = [
   {
     path: "/clients/list",
     name: "Clients",
-    icon: "fas fa-user-tie", // Changed from fa-users to fa-user-tie
+    icon: "fas fa-user-tie",
     component: ListClients,
     id_role: "ADMIN",
     componentStr: "ListClients",
@@ -160,7 +164,7 @@ const dashboardRoutes = [
   {
     path: "/suppliers/list",
     name: "Suppliers",
-    icon: "fas fa-truck-loading", // Changed from fa-truck to fa-truck-loading
+    icon: "fas fa-truck-loading",
     component: ListSuppliers,
     id_role: "ADMIN",
     componentStr: "ListSuppliers",
@@ -180,6 +184,34 @@ const dashboardRoutes = [
     icon: "fas fa-edit",
     component: AjouterSupplier,
     componentStr: "AjouterSupplier",
+    id_role: "ADMIN",
+    className: "hidden",
+  },
+
+  // ==================== PURCHASE INVOICES ====================
+  {
+    path: "/purchase-invoices/list",
+    name: "Purchase Invoices",
+    icon: "fas fa-file-invoice-dollar", // Appropriate icon for purchase invoices
+    component: ListPurchaseInvoice,
+    id_role: "ADMIN", // ADMIN and PURCHASE roles can access
+    componentStr: "ListPurchaseInvoice",
+  },
+  {
+    path: "/purchase-invoice/add",
+    name: "Add Purchase Invoice",
+    icon: "fas fa-plus-circle",
+    component: AddPurchaseInvoice,
+    componentStr: "AddPurchaseInvoice",
+    id_role: "ADMIN",
+    className: "hidden",
+  },
+  {
+    path: "/purchase-invoice/update/:id",
+    name: "Update Purchase Invoice",
+    icon: "fas fa-edit",
+    component: AddPurchaseInvoice,
+    componentStr: "AddPurchaseInvoice",
     id_role: "ADMIN",
     className: "hidden",
   },

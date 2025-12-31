@@ -14,15 +14,14 @@ import { useParams, useHistory } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import { toast, ToastContainer } from "react-toastify";
 import {
-  addFactureWithLigneFactures,
-  updateFactureWithLigneFactures,
-  getFactureWithLigneFactures,
-} from "../../Redux/factureReduce";
-import { getProduits } from "../../Redux/produitReduce";
-import { getClients } from "../../Redux/clientReduce";
-import { getProjets } from "../../Redux/projetReduce";
+  addPurchaseInvoice,
+  updatePurchaseInvoice,
+  getPurchaseInvoice,
+} from "../../../Redux/purchaseInvoiceSlice";
+import { fetchProducts } from "../../../Redux/productsSlice";
+import { fetchSuppliers } from "../../../Redux/suppliersSlice";
 
-function AddFacture() {
+function AddPurchaseInvoice() {
   const notify = (type, msg) => {
     toast(
       <strong>
@@ -49,77 +48,68 @@ function AddFacture() {
   const { id: paramId } = useParams();
   const id = !isNaN(paramId) ? paramId : null;
 
-  const [productLines, setProductLines] = useState([]);
-  const [projectLines, setProjectLines] = useState([]);
-  const [num, setNum] = useState("");
-  const [produits, setProduits] = useState([]);
-  const [projects, setProjects] = useState([]);
-  const [clients, setClients] = useState([]);
-  const [client, setClient] = useState(null);
-  const [mntTotalHT, setMntTotalHT] = useState(0);
-  const [mntTotalTVA, setMntTotalTVA] = useState(0);
-  const [mntTotalTTC, setMntTotalTTC] = useState(0);
-  const [typeFacture] = useState(1);
+  const [invoiceItems, setInvoiceItems] = useState([]);
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [products, setProducts] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
+  const [supplier, setSupplier] = useState(null);
+  const [totalHT, setTotalHT] = useState(0);
+  const [totalTTC, setTotalTTC] = useState(0);
+  const [type, setType] = useState("PURCHASE");
+  const [status, setStatus] = useState("DRAFT");
 
   const calculateTotals = useCallback(() => {
-    let totalHT = productLines.reduce((total, lf) => total + lf.mnt, 0);
-    totalHT += projectLines.reduce((total, lf) => total + lf.mnt, 0);
-    const tva = totalHT * 0.19;
-    setMntTotalHT(totalHT);
-    setMntTotalTVA(tva);
-    setMntTotalTTC(totalHT + tva);
-  }, [productLines, projectLines]);
+    let ht = invoiceItems.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    );
+    // Assuming 19% TVA
+    const ttc = ht * 1.19;
+    setTotalHT(ht);
+    setTotalTTC(ttc);
+  }, [invoiceItems]);
 
   useEffect(() => {
     const fetchData = async () => {
-      const [clientRes, produitRes, projectRes] = await Promise.all([
-        dispatch(getClients()),
-        dispatch(getProduits()),
-        dispatch(getProjets()),
+      const [supplierRes, productRes] = await Promise.all([
+        dispatch(fetchSuppliers()),
+        dispatch(fetchProducts()),
       ]);
-      setClients(clientRes.payload.data);
-      setProduits(produitRes.payload.data);
-      setProjects(projectRes.payload.data);
+      setSuppliers(supplierRes.payload);
+      setProducts(productRes.payload);
     };
     fetchData();
   }, [dispatch]);
 
   useEffect(() => {
     if (id) {
-      const fetchFacture = async () => {
-        const response = await dispatch(getFactureWithLigneFactures(id));
-        const { num, date, ligneFactures, client } = response.payload;
-        setNum(num);
-        setDate(date);
-        setClient({
-          value: client.id,
-          label: client.name,
-          client: client,
+      const fetchInvoice = async () => {
+        const response = await dispatch(getPurchaseInvoice(id));
+        const data = response.payload;
+        setInvoiceNumber(data.invoiceNumber);
+        setDate(data.date.split("T")[0]);
+        setType(data.type);
+        setStatus(data.status);
+        setTotalHT(data.totalHT);
+        setTotalTTC(data.totalTTC);
+
+        setSupplier({
+          value: data.supplier.id,
+          label: data.supplier.name,
+          supplier: data.supplier,
         });
 
-        setProductLines(
-          ligneFactures
-            .filter((lf) => lf.produitId)
-            .map((lf) => ({
-              produitId: lf.produitId,
-              qte: lf.qte,
-              pu: lf.pu,
-              mnt: lf.pu * lf.qte,
-            }))
-        );
-
-        setProjectLines(
-          ligneFactures
-            .filter((lf) => lf.projectId)
-            .map((lf) => ({
-              projetId: lf.projectId,
-              pu: lf.pu,
-              qte: lf.qte,
-              mnt: lf.pu * lf.qte,
-            }))
+        setInvoiceItems(
+          data.items.map((item) => ({
+            id: item.id,
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+            total: item.price * item.quantity,
+          }))
         );
       };
-      fetchFacture();
+      fetchInvoice();
     }
   }, [id, dispatch]);
 
@@ -127,134 +117,78 @@ function AddFacture() {
     calculateTotals();
   }, [calculateTotals]);
 
-  // Function to handle product line changes
-  const handleProductLineChange = (index, field, value) => {
-    const newProductLines = productLines.map((line, i) => {
+  const handleItemChange = (index, field, value) => {
+    const newItems = invoiceItems.map((item, i) => {
       if (i === index) {
-        const updatedLine = { ...line, [field]: value };
+        const updatedItem = { ...item, [field]: value };
 
-        // Automatically set pu when a product is selected
-        if (field === "produitId") {
-          const selectedProduct = produits.find((p) => p.id === value);
-          updatedLine.pu = selectedProduct ? selectedProduct.price : 0; // Use the pu from the selected product
+        if (field === "productId") {
+          const selectedProduct = products.find((p) => p.id === value);
+          updatedItem.price = selectedProduct ? selectedProduct.salePrice : 0;
         }
 
-        updatedLine.mnt = updatedLine.pu * updatedLine.qte; // Calculate the amount
-        return updatedLine;
+        updatedItem.total = updatedItem.price * updatedItem.quantity;
+        return updatedItem;
       }
-      return line;
+      return item;
     });
-    setProductLines(newProductLines);
-    calculateTotals();
+    setInvoiceItems(newItems);
   };
 
-  // Function to handle project line changes
-  const handleProjectLineChange = (index, field, value) => {
-    const newProjectLines = projectLines.map((line, i) => {
-      if (i === index) {
-        const updatedLine = { ...line, [field]: value };
-
-        // Automatically set pu when a project is selected
-        if (field === "projetId") {
-          const selectedProject = projects.find((p) => p.id === value);
-          updatedLine.pu = selectedProject ? selectedProject.price : 0; // Use the pu from the selected project
-        }
-
-        updatedLine.mnt = updatedLine.pu * updatedLine.qte; // Calculate the amount
-        return updatedLine;
-      }
-      return line;
-    });
-    setProjectLines(newProjectLines);
-    calculateTotals();
-  };
-
-  const handleAddProductLine = () => {
-    setProductLines([
-      ...productLines,
-      { produitId: "", qte: 0, mnt: 0, pu: 0 },
+  const handleAddItem = () => {
+    setInvoiceItems([
+      ...invoiceItems,
+      { productId: "", quantity: 1, price: 0, total: 0 },
     ]);
   };
 
-  const handleAddProjectLine = () => {
-    setProjectLines([...projectLines, { projetId: "", pu: 0, qte: 0, mnt: 0 }]);
-  };
-
-  const handleRemoveProductLine = (index) => {
-    const newProductLines = productLines.filter((_, i) => i !== index);
-    setProductLines(newProductLines);
-    calculateTotals();
-  };
-
-  const handleRemoveProjectLine = (index) => {
-    const newProjectLines = projectLines.filter((_, i) => i !== index);
-    setProjectLines(newProjectLines);
-    calculateTotals();
+  const handleRemoveItem = (index) => {
+    const newItems = invoiceItems.filter((_, i) => i !== index);
+    setInvoiceItems(newItems);
   };
 
   const submitForm = async () => {
     // Validate form
-    if (validator.isEmpty(num)) {
+    if (validator.isEmpty(invoiceNumber)) {
       notify(2, "Numéro de facture est obligatoire");
       return;
     }
-    if (!client) {
-      notify(2, "Client est obligatoire");
+    if (!supplier) {
+      notify(2, "Fournisseur est obligatoire");
+      return;
+    }
+    if (invoiceItems.length === 0) {
+      notify(2, "Au moins un article est obligatoire");
       return;
     }
 
-    const ligneFactures = [
-      ...productLines.map((line) => ({
-        produitId: line.produitId,
-        qte: line.qte,
-        pu: line.pu,
-        mnt: line.mnt,
-      })),
-      ...projectLines.map((line) => ({
-        projetId: line.projetId,
-        qte: line.qte,
-        pu: line.pu,
-        mnt: line.mnt,
-      })),
-    ];
-
-    if (ligneFactures.length === 0) {
-      notify(2, "Au moins une ligne de produit ou projet est obligatoire");
-      return;
-    }
+    const items = invoiceItems.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: item.price,
+    }));
 
     try {
-      if (id) {
-        const facture = {
-          id,
-          client: client.client,
-          num,
-          date,
-          ligneFactures,
-          mntTotalHT,
-          mntTotalTVA,
-          mntTotalTTC,
-          typeFacture,
-        };
-        await dispatch(updateFactureWithLigneFactures(facture));
+      const invoiceData = {
+        invoiceNumber,
+        date,
+        type,
+        status,
+        supplierId: supplier.value,
+        items,
+        totalHT,
+        totalTTC,
+      };
 
-        notify(1, "Facture mise à jour avec succès");
-        setTimeout(() => navigate.push("/facture/list"), 1500);
+      if (id) {
+        await dispatch(updatePurchaseInvoice({ id, ...invoiceData }));
+        notify(1, "Facture d'achat mise à jour avec succès");
       } else {
-        const facture = {
-          client: client.client,
-          num,
-          date,
-          ligneFactures,
-          mntTotalHT,
-          mntTotalTVA,
-          mntTotalTTC,
-          typeFacture,
-        };
-        await dispatch(addFactureWithLigneFactures(facture));
-        notify(1, "Facture ajoutée avec succès");
-        setTimeout(() => navigate.push("/facture/list"), 1500);
+        await dispatch(addPurchaseInvoice(invoiceData));
+        notify(1, "Facture d'achat ajoutée avec succès");
       }
+
+      setTimeout(() => navigate.push("/purchase-invoices/list"), 1500);
     } catch (error) {
       notify(2, "Erreur lors de l'enregistrement de la facture");
     }
@@ -269,7 +203,7 @@ function AddFacture() {
             className="btn-wd btn-outline mr-1 float-left"
             type="button"
             variant="info"
-            onClick={() => navigate.push("/facture/list")}
+            onClick={() => navigate.push("/purchase-invoice/list")}
           >
             <span className="btn-label">
               <i className="fas fa-list"></i>
@@ -282,58 +216,90 @@ function AddFacture() {
         <Card>
           <Card.Header>
             <Card.Title as="h4">
-              {isNaN(paramId) ? "Ajouter facture" : "Modifier facture"}
+              {isNaN(paramId)
+                ? "Ajouter facture d'achat"
+                : "Modifier facture d'achat"}
             </Card.Title>
           </Card.Header>
           <Card.Body>
             <Row>
-              <Col md="6">
+              <Col md="4">
                 <Form.Group>
-                  <label>Numéro* </label>
+                  <label>Numéro de facture* </label>
                   <Form.Control
-                    value={num}
-                    placeholder="num"
-                    onChange={(e) => setNum(e.target.value)}
+                    value={invoiceNumber}
+                    placeholder="Ex: FAC-2023-001"
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
                   />
                 </Form.Group>
               </Col>
-              <Col md="6">
+              <Col md="4">
                 <Form.Group>
-                  <label>Date Création* </label>
+                  <label>Date* </label>
                   <Form.Control
-                    readOnly
+                    type="date"
                     value={date}
-                    placeholder="date"
                     onChange={(e) => setDate(e.target.value)}
                   />
                 </Form.Group>
               </Col>
+              <Col md="4">
+                <Form.Group>
+                  <label>Type* </label>
+                  <Select
+                    value={{ value: type, label: type }}
+                    options={[
+                      { value: "PURCHASE_ORDER", label: "Bon de commande" },
+                      { value: "PURCHASE_INVOICE", label: "Facture achat" },
+                      { value: "PURCHASE_REFUND", label: "Avoir fournisseur" },
+                    ]}
+                    onChange={(e) => setType(e.value)}
+                  />
+                </Form.Group>
+              </Col>
               <Col md="6">
                 <Form.Group>
-                  <label>Client* </label>
+                  <label>Fournisseur* </label>
                   <Select
-                    placeholder="client"
-                    value={client}
-                    options={clients.map((client) => ({
-                      label: client.name,
-                      value: client.id,
-                      client: client,
+                    placeholder="Sélectionner un fournisseur"
+                    value={supplier}
+                    options={suppliers.map((supplier) => ({
+                      label: supplier.name,
+                      value: supplier.id,
+                      supplier: supplier,
                     }))}
-                    onChange={(e) => setClient(e)}
+                    onChange={(e) => setSupplier(e)}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md="6">
+                <Form.Group>
+                  <label>Statut </label>
+                  <Select
+                    value={{ value: status, label: status }}
+                    options={[
+                      { value: "DRAFT", label: "Brouillon" },
+                      { value: "VALIDATED", label: "Validée" },
+                      { value: "PAID", label: "Payée" },
+                      { value: "CANCELLED", label: "Annulée" },
+                    ]}
+                    onChange={(e) => setStatus(e.value)}
                   />
                 </Form.Group>
               </Col>
             </Row>
             <br></br>
-            {/* Product Lines */}
+
+            {/* Items Table */}
             <Row>
               <Col md="12">
                 <Button
                   variant="success"
-                  onClick={handleAddProductLine}
+                  onClick={handleAddItem}
                   className="mb-3"
                 >
-                  Ajouter produit
+                  <i className="fas fa-plus mr-2"></i>
+                  Ajouter un article
                 </Button>
 
                 <Table striped bordered hover>
@@ -341,157 +307,68 @@ function AddFacture() {
                     <tr>
                       <th>Produit</th>
                       <th>Quantité</th>
-                      <th>Prix Unitaire</th>
-                      <th>Montant</th>
+                      <th>Prix unitaire (€)</th>
+                      <th>Total (€)</th>
                       <th>Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {productLines.map((line, index) => (
+                    {invoiceItems.map((item, index) => (
                       <tr key={index}>
                         <td>
                           <Select
-                            placeholder="produit"
-                            value={produits
+                            placeholder="Sélectionner un produit"
+                            value={products
                               .map((p) => ({
                                 label: p.name,
                                 value: p.id,
                               }))
-                              .find((p) => p.value === line.produitId)}
-                            options={produits.map((produit) => ({
-                              label: produit.name,
-                              value: produit.id,
+                              .find((p) => p.value === item.productId)}
+                            options={products.map((product) => ({
+                              label: product.name,
+                              value: product.id,
                             }))}
                             onChange={(e) =>
-                              handleProductLineChange(
+                              handleItemChange(index, "productId", e.value)
+                            }
+                          />
+                        </td>
+                        <td>
+                          <Form.Control
+                            value={item.quantity}
+                            type="number"
+                            min="1"
+                            onChange={(e) =>
+                              handleItemChange(
                                 index,
-                                "produitId",
-                                e.value
+                                "quantity",
+                                parseInt(e.target.value) || 0
                               )
                             }
                           />
                         </td>
                         <td>
                           <Form.Control
-                            value={line.qte}
+                            value={item.price}
                             type="number"
+                            step="0.01"
                             onChange={(e) =>
-                              handleProductLineChange(
+                              handleItemChange(
                                 index,
-                                "qte",
-                                e.target.value
+                                "price",
+                                parseFloat(e.target.value) || 0
                               )
                             }
                           />
                         </td>
-                        <td>
-                          <Form.Control
-                            value={line.pu}
-                            type="number"
-                            onChange={(e) =>
-                              handleProductLineChange(
-                                index,
-                                "pu",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </td>
-                        <td>{line.mnt}</td>
+                        <td>{item.total.toFixed(2)}</td>
                         <td>
                           <Button
                             variant="danger"
-                            onClick={() => handleRemoveProductLine(index)}
+                            size="sm"
+                            onClick={() => handleRemoveItem(index)}
                           >
-                            Supprimer
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </Table>
-              </Col>
-            </Row>
-
-            {/* Project Lines */}
-            <Row>
-              <Col md="12">
-                <Button
-                  variant="success"
-                  onClick={handleAddProjectLine}
-                  className="mb-3"
-                >
-                  Ajouter projet
-                </Button>
-
-                <Table striped bordered hover>
-                  <thead>
-                    <tr>
-                      <th>Projet</th>
-                      <th>Quantité</th>
-                      <th>Prix Unitaire</th>
-                      <th>Montant</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {projectLines.map((line, index) => (
-                      <tr key={index}>
-                        <td>
-                          <Select
-                            placeholder="projet"
-                            value={projects
-                              .map((p) => ({
-                                label: p.libelle,
-                                value: p.id,
-                              }))
-                              .find((p) => p.value === line.projetId)}
-                            options={projects.map((project) => ({
-                              label: project.libelle,
-                              value: project.id,
-                            }))}
-                            onChange={(e) =>
-                              handleProjectLineChange(
-                                index,
-                                "projetId",
-                                e.value
-                              )
-                            }
-                          />
-                        </td>
-                        <td>
-                          <Form.Control
-                            value={line.qte}
-                            type="number"
-                            onChange={(e) =>
-                              handleProjectLineChange(
-                                index,
-                                "qte",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </td>
-                        <td>
-                          <Form.Control
-                            value={line.pu}
-                            type="number"
-                            onChange={(e) =>
-                              handleProjectLineChange(
-                                index,
-                                "pu",
-                                e.target.value
-                              )
-                            }
-                          />
-                        </td>
-                        <td>{line.mnt}</td>
-                        <td>
-                          <Button
-                            variant="danger"
-                            onClick={() => handleRemoveProjectLine(index)}
-                          >
-                            Supprimer
+                            <i className="fas fa-trash"></i>
                           </Button>
                         </td>
                       </tr>
@@ -502,23 +379,12 @@ function AddFacture() {
             </Row>
 
             {/* Totals */}
-            {/* <Row>
-              <Col md="4">
-                <h5>Total HT: {mntTotalHT}</h5>
-              </Col>
-              <Col md="4">
-                <h5>Total TVA (19%): {mntTotalTVA}</h5>
-              </Col>
-              <Col md="4">
-                <h5>Total TTC: {mntTotalTTC}</h5>
-              </Col>
-            </Row> */}
             <Row>
               <Col md="4">
                 <Form.Group>
-                  <label>Total HT</label>
+                  <label>Total HT (€)</label>
                   <Form.Control
-                    value={mntTotalHT.toFixed(2)}
+                    value={totalHT.toFixed(2)}
                     placeholder="Total HT"
                     readOnly
                   />
@@ -526,19 +392,19 @@ function AddFacture() {
               </Col>
               <Col md="4">
                 <Form.Group>
-                  <label>Total TVA</label>
+                  <label>TVA (19%) (€)</label>
                   <Form.Control
-                    value={mntTotalTVA.toFixed(2)}
-                    placeholder="Total TVA"
+                    value={(totalTTC - totalHT).toFixed(2)}
+                    placeholder="TVA"
                     readOnly
                   />
                 </Form.Group>
               </Col>
               <Col md="4">
                 <Form.Group>
-                  <label>Total TTC</label>
+                  <label>Total TTC (€)</label>
                   <Form.Control
-                    value={mntTotalTTC.toFixed(2)}
+                    value={totalTTC.toFixed(2)}
                     placeholder="Total TTC"
                     readOnly
                   />
@@ -549,10 +415,10 @@ function AddFacture() {
           <Card.Footer>
             <Button
               className="btn-wd btn-outline mr-1 float-left"
-              variant="info"
+              variant="primary"
               onClick={submitForm}
             >
-              {isNaN(paramId) ? "Enregistrer" : "Modifier"}
+              {isNaN(paramId) ? "Enregistrer" : "Mettre à jour"}
             </Button>
           </Card.Footer>
         </Card>
@@ -561,4 +427,4 @@ function AddFacture() {
   );
 }
 
-export default AddFacture;
+export default AddPurchaseInvoice;
