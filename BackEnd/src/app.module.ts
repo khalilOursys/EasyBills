@@ -8,6 +8,7 @@ import { Module } from '@nestjs/common';
 import { ClientsModule } from './clients/clients.module';
 import { SuppliersModule } from './suppliers/suppliers.module';
 import { PurchaseInvoiceModule } from './purchase-invoice/purchase-invoice.module';
+import { SaleInvoiceModule } from './sale-invoice/sale-invoice.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PurchaseInvoiceModule } from './purchase-invoice/purchase-invoice.modul
     ClientsModule,
     SuppliersModule,
     PurchaseInvoiceModule,
+    SaleInvoiceModule,
   ],
   controllers: [AppController],
   providers: [PrismaService],

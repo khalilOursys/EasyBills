@@ -191,6 +191,9 @@ model SaleInvoiceItem {
   quantity  Int
   price     Float
 
+  vatRate   Float    @default(0)  // TVA %, example 19
+  vatAmount Float    @default(0)  // TVA = price * quantity * (vatRate/100)
+
   invoiceId Int
   productId Int
 

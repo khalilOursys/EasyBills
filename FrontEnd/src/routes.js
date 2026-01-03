@@ -17,6 +17,8 @@ import ListSuppliers from "./views/Settings/Supplier/ListSuppliers";
 // Import Purchase Invoice components
 import ListPurchaseInvoice from "./views/Settings/Invoice/FactureList";
 import AddPurchaseInvoice from "./views/Settings/Invoice/AddFacture";
+import AddSaleInvoice from "./views/Settings/SaleInvoice/AddSaleInvoice";
+import ListSaleInvoice from "./views/Settings/SaleInvoice/ListSaleInvoice";
 
 const dashboardRoutes = [
   // ==================== USER ====================
@@ -212,6 +214,32 @@ const dashboardRoutes = [
     icon: "fas fa-edit",
     component: AddPurchaseInvoice,
     componentStr: "AddPurchaseInvoice",
+    id_role: "ADMIN",
+    className: "hidden",
+  },
+  {
+    path: "/sale-invoices/list",
+    name: "Factures de Vente",
+    icon: "fas fa-file-invoice", // Appropriate icon for sale invoices
+    component: ListSaleInvoice,
+    id_role: "ADMIN", // ADMIN and SALES roles can access
+    componentStr: "ListSaleInvoice",
+  },
+  {
+    path: "/sale-invoice/add",
+    name: "Nouvelle Facture de Vente",
+    icon: "fas fa-plus-circle",
+    component: AddSaleInvoice,
+    componentStr: "AddSaleInvoice",
+    id_role: "ADMIN",
+    className: "hidden",
+  },
+  {
+    path: "/sale-invoice/update/:id",
+    name: "Modifier Facture de Vente",
+    icon: "fas fa-edit",
+    component: AddSaleInvoice,
+    componentStr: "AddSaleInvoice",
     id_role: "ADMIN",
     className: "hidden",
   },
