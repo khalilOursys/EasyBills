@@ -25,6 +25,8 @@ import ListSuppliers from "./views/Settings/Supplier/ListSuppliers";
 import NotFound from "./views/NotFound";
 import ListPurchaseInvoice from "./views/Settings/Invoice/FactureList";
 import AddPurchaseInvoice from "./views/Settings/Invoice/AddFacture";
+import ListSaleInvoice from "./views/Settings/SaleInvoice/ListSaleInvoice";
+import AddSaleInvoice from "./views/Settings/SaleInvoice/AddSaleInvoice";
 
 const Components = {
   // Existing
@@ -45,6 +47,10 @@ const Components = {
   // Purchase Invoice components
   ListPurchaseInvoice,
   AddPurchaseInvoice,
+
+  // Sale Invoice components
+  AddSaleInvoice,
+  ListSaleInvoice,
 };
 
 export default Components;
