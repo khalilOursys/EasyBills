@@ -161,6 +161,7 @@ export class SaleInvoiceService {
       where,
       include: {
         client: true,
+        payments: true,
         items: {
           include: {
             product: true,

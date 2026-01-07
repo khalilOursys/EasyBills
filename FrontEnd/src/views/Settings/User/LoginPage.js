@@ -59,11 +59,11 @@ function LoginPage() {
     promise.then((value) => {
       console.log(value);
 
-      if (data.message) {
-        notifyErr(data.message);
+      if (value.message) {
+        notifyErr(value.message);
       } else {
-        localStorage.setItem("x-access-token", data.access_token);
-        localStorage.setItem("user", data.user);
+        localStorage.setItem("x-access-token", value.access_token);
+        localStorage.setItem("user", value.user);
         window.location.replace("/users");
       }
       /* if(value.message !== true ){        

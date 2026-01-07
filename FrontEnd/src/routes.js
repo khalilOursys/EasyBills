@@ -20,6 +20,10 @@ import AddPurchaseInvoice from "./views/Settings/Invoice/AddFacture";
 import AddSaleInvoice from "./views/Settings/SaleInvoice/AddSaleInvoice";
 import ListSaleInvoice from "./views/Settings/SaleInvoice/ListSaleInvoice";
 
+// Import Payment components
+import AjouterPayment from "./views/Settings/Payments/AjouterPayment";
+import ListPayments from "./views/Settings/Payments/ListPayments";
+
 const dashboardRoutes = [
   // ==================== USER ====================
   {
@@ -194,9 +198,9 @@ const dashboardRoutes = [
   {
     path: "/purchase-invoices/list",
     name: "Purchase Invoices",
-    icon: "fas fa-file-invoice-dollar", // Appropriate icon for purchase invoices
+    icon: "fas fa-file-invoice-dollar",
     component: ListPurchaseInvoice,
-    id_role: "ADMIN", // ADMIN and PURCHASE roles can access
+    id_role: "ADMIN",
     componentStr: "ListPurchaseInvoice",
   },
   {
@@ -217,12 +221,14 @@ const dashboardRoutes = [
     id_role: "ADMIN",
     className: "hidden",
   },
+
+  // ==================== SALE INVOICES ====================
   {
     path: "/sale-invoices/list",
     name: "Factures de Vente",
-    icon: "fas fa-file-invoice", // Appropriate icon for sale invoices
+    icon: "fas fa-file-invoice",
     component: ListSaleInvoice,
-    id_role: "ADMIN", // ADMIN and SALES roles can access
+    id_role: "ADMIN",
     componentStr: "ListSaleInvoice",
   },
   {
@@ -241,6 +247,56 @@ const dashboardRoutes = [
     component: AddSaleInvoice,
     componentStr: "AddSaleInvoice",
     id_role: "ADMIN",
+    className: "hidden",
+  },
+
+  // ==================== PAYMENTS ====================
+  {
+    path: "/payments/list",
+    name: "Paiements",
+    icon: "fas fa-money-check-alt",
+    component: ListPayments,
+    id_role: ["ADMIN", "FINANCE"], // ADMIN and FINANCE roles can access
+    componentStr: "ListPayments",
+  },
+  {
+    path: "/payments/add",
+    name: "Nouveau Paiement",
+    icon: "fas fa-money-bill-wave",
+    component: AjouterPayment,
+    componentStr: "AjouterPayment",
+    id_role: ["ADMIN", "FINANCE"],
+    className: "hidden",
+  },
+  {
+    path: "/payments/update/:id",
+    name: "Modifier Paiement",
+    icon: "fas fa-edit",
+    component: AjouterPayment,
+    componentStr: "AjouterPayment",
+    id_role: ["ADMIN", "FINANCE"],
+    className: "hidden",
+  },
+
+  // ==================== DASHBOARD/ANALYTICS ====================
+  {
+    path: "/dashboard/payments-summary",
+    name: "Tableau de Bord Paiements",
+    icon: "fas fa-chart-line",
+    component: ListPayments, // You can create a dedicated DashboardPaymentSummary component
+    id_role: ["ADMIN", "FINANCE", "MANAGER"],
+    componentStr: "ListPayments",
+    className: "hidden", // Or make it visible in the menu
+  },
+
+  // ==================== PAYMENT REPORTS ====================
+  {
+    path: "/reports/payments",
+    name: "Rapports Paiements",
+    icon: "fas fa-file-alt",
+    component: ListPayments, // You can create a dedicated PaymentReports component
+    id_role: ["ADMIN", "FINANCE", "MANAGER"],
+    componentStr: "ListPayments",
     className: "hidden",
   },
 ];

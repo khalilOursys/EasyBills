@@ -1,3 +1,4 @@
+// src/components.js
 // User
 import AjouterUser from "./views/Settings/User/AjouterUser";
 import ListUser from "./views/Settings/User/ListUser";
@@ -28,6 +29,10 @@ import AddPurchaseInvoice from "./views/Settings/Invoice/AddFacture";
 import ListSaleInvoice from "./views/Settings/SaleInvoice/ListSaleInvoice";
 import AddSaleInvoice from "./views/Settings/SaleInvoice/AddSaleInvoice";
 
+// Payment Components
+import AjouterPayment from "./views/Settings/Payments/AjouterPayment";
+import ListPayments from "./views/Settings/Payments/ListPayments";
+
 const Components = {
   // Existing
   ListUser,
@@ -43,14 +48,12 @@ const Components = {
   AjouterClient,
   ListSuppliers,
   AjouterSupplier,
-
-  // Purchase Invoice components
   ListPurchaseInvoice,
   AddPurchaseInvoice,
-
-  // Sale Invoice components
   AddSaleInvoice,
   ListSaleInvoice,
+  AjouterPayment,
+  ListPayments,
 };
 
 export default Components;

@@ -148,6 +148,7 @@ export class PurchaseInvoiceService {
     return this.prisma.purchaseInvoice.findMany({
       where,
       include: {
+        payments: true,
         supplier: true,
         items: {
           include: {

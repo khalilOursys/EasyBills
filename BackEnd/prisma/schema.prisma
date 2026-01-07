@@ -18,21 +18,23 @@ enum UserRole {
 
 enum PaymentMethod {
   CASH
-  BANK
-  CHEQUE
+  CHECK
+  BANK_TRANSFER
+  CREDIT_CARD
+  MOBILE_PAYMENT
 }
 
 enum PurchaseInvoiceType {
-  PURCHASE_ORDER       // Bon de commande
-  PURCHASE_INVOICE     // Facture achat
-  PURCHASE_REFUND      // Avoir fournisseur
+  PURCHASE_ORDER
+  PURCHASE_INVOICE
+  PURCHASE_REFUND
 }
 
 enum SaleInvoiceType {
-  QUOTATION            // Devis
-  DELIVERY_NOTE        // Bon de livraison
-  SALE_INVOICE         // Facture vente
-  SALE_REFUND          // Avoir client
+  QUOTATION
+  DELIVERY_NOTE
+  SALE_INVOICE
+  SALE_REFUND
 }
 
 enum InvoiceStatus {
@@ -42,22 +44,20 @@ enum InvoiceStatus {
   CANCELLED
 }
 
-
 //////////////////////////////////////
 // USER
 //////////////////////////////////////
 
 model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  password  String
-  telephone            String?
-  firstName            String?
-  lastName             String?
-  role      UserRole  @default(COMMERCIAL)
-  createdAt DateTime  @default(now())
+  id         Int       @id @default(autoincrement())
+  email      String    @unique
+  password   String
+  telephone  String?
+  firstName  String?
+  lastName   String?
+  role       UserRole  @default(COMMERCIAL)
+  createdAt  DateTime  @default(now())
 }
-
 
 //////////////////////////////////////
 // CATEGORY
@@ -70,36 +70,37 @@ model Category {
   products    Product[]
 }
 
-
 //////////////////////////////////////
 // CLIENT
 //////////////////////////////////////
 
 model Client {
-  id              Int           @id @default(autoincrement())
-  name            String
-  phone           String?
-  address         String?
-  taxNumber       String?
-  saleInvoices    SaleInvoice[]
-}
+  id           Int             @id @default(autoincrement())
+  name         String
+  phone        String?
+  address      String?
+  taxNumber    String?
 
+  saleInvoices SaleInvoice[]
+  payments     Payment[]
+}
 
 //////////////////////////////////////
 // SUPPLIER
 //////////////////////////////////////
 
 model Supplier {
-  id               Int                   @id @default(autoincrement())
+  id               Int                 @id @default(autoincrement())
   code             String
   name             String
   taxNumber        String?
   phone            String?
   address          String?
   bankRib          String?
-  purchaseInvoices PurchaseInvoice[]
-}
 
+  purchaseInvoices PurchaseInvoice[]
+  payments         Payment[]
+}
 
 //////////////////////////////////////
 // PRODUCT
@@ -120,15 +121,14 @@ model Product {
   vat           Float     @default(19)
 
   categoryId Int
-  category   Category     @relation(fields: [categoryId], references: [id])
+  category   Category @relation(fields: [categoryId], references: [id])
 
   purchaseInvoiceItems PurchaseInvoiceItem[]
   saleInvoiceItems     SaleInvoiceItem[]
 }
 
-
 //////////////////////////////////////
-// PURCHASE INVOICE (ACHAT)
+// PURCHASE INVOICE
 //////////////////////////////////////
 
 model PurchaseInvoice {
@@ -143,7 +143,9 @@ model PurchaseInvoice {
   supplierId    Int
   supplier      Supplier                @relation(fields: [supplierId], references: [id])
 
-  items         PurchaseInvoiceItem[] 
+  items         PurchaseInvoiceItem[]
+
+  payments      Payment[]               @relation("PurchaseInvoicePayments")
 
   totalHT       Float                   @default(0)
   totalTTC      Float                   @default(0)
@@ -163,9 +165,8 @@ model PurchaseInvoiceItem {
   product   Product         @relation(fields: [productId], references: [id])
 }
 
-
 //////////////////////////////////////
-// SALE INVOICE (VENTE)
+// SALE INVOICE
 //////////////////////////////////////
 
 model SaleInvoice {
@@ -179,6 +180,7 @@ model SaleInvoice {
   client        Client             @relation(fields: [clientId], references: [id])
 
   items         SaleInvoiceItem[]
+  payments      Payment[]          @relation("SaleInvoicePayments")
 
   totalHT       Float              @default(0)
   totalTTC      Float              @default(0)
@@ -191,8 +193,8 @@ model SaleInvoiceItem {
   quantity  Int
   price     Float
 
-  vatRate   Float    @default(0)  // TVA %, example 19
-  vatAmount Float    @default(0)  // TVA = price * quantity * (vatRate/100)
+  vatRate   Float   @default(0)
+  vatAmount Float   @default(0)
 
   invoiceId Int
   productId Int
@@ -201,12 +203,28 @@ model SaleInvoiceItem {
   product   Product     @relation(fields: [productId], references: [id])
 }
 
-
 //////////////////////////////////////
 // PAYMENTS
 //////////////////////////////////////
 
+model Payment {
+  id       Int           @id @default(autoincrement())
+  amount   Float
+  method   PaymentMethod
+  createdAt DateTime     @default(now())
 
+  purchaseInvoiceId Int?
+  purchaseInvoice   PurchaseInvoice? @relation("PurchaseInvoicePayments", fields: [purchaseInvoiceId], references: [id])
+
+  supplierId        Int?
+  supplier          Supplier?        @relation(fields: [supplierId], references: [id])
+
+  saleInvoiceId     Int?
+  saleInvoice       SaleInvoice?     @relation("SaleInvoicePayments", fields: [saleInvoiceId], references: [id])
+
+  clientId          Int?
+  client            Client?          @relation(fields: [clientId], references: [id])
+}
 
 //////////////////////////////////////
 // COMPANY SETTINGS
