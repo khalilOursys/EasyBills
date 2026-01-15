@@ -10,6 +10,7 @@ import { SuppliersModule } from './suppliers/suppliers.module';
 import { PurchaseInvoiceModule } from './purchase-invoice/purchase-invoice.module';
 import { SaleInvoiceModule } from './sale-invoice/sale-invoice.module';
 import { PaymentsModule } from './payments/payments.module';
+import { CompanySettingsModule } from './company-settings/company-settings.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { PaymentsModule } from './payments/payments.module';
     PurchaseInvoiceModule,
     SaleInvoiceModule,
     PaymentsModule,
+    CompanySettingsModule,
   ],
   controllers: [AppController],
   providers: [PrismaService],
