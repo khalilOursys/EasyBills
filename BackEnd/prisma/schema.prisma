@@ -236,4 +236,7 @@ model CompanySettings {
   address     String?
   phone       String?
   taxNumber   String?
+  logo        String?
+  rib         String?
+  email       String?
 }

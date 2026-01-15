@@ -23,6 +23,8 @@ import ListSaleInvoice from "./views/Settings/SaleInvoice/ListSaleInvoice";
 // Import Payment components
 import AjouterPayment from "./views/Settings/Payments/AjouterPayment";
 import ListPayments from "./views/Settings/Payments/ListPayments";
+import SaleInvoiceDetails from "./views/Settings/SaleInvoice/DetailFacture";
+import CompanySettings from "./views/CompanySettings";
 
 const dashboardRoutes = [
   // ==================== USER ====================
@@ -232,6 +234,15 @@ const dashboardRoutes = [
     componentStr: "ListSaleInvoice",
   },
   {
+    path: "/sale-invoice/detail/:id",
+    name: "Nouvelle Facture de Vente",
+    icon: "fas fa-plus-circle",
+    component: SaleInvoiceDetails,
+    componentStr: "SaleInvoiceDetails",
+    id_role: "ADMIN",
+    className: "hidden",
+  },
+  {
     path: "/sale-invoice/add",
     name: "Nouvelle Facture de Vente",
     icon: "fas fa-plus-circle",
@@ -298,6 +309,16 @@ const dashboardRoutes = [
     id_role: ["ADMIN", "FINANCE", "MANAGER"],
     componentStr: "ListPayments",
     className: "hidden",
+  },
+
+  // ==================== DASHBOARD/ANALYTICS ====================
+  {
+    path: "/companySettings",
+    name: "Company Settings",
+    icon: "fas fa-chart-line",
+    component: CompanySettings, // You can create a dedicated DashboardPaymentSummary component
+    id_role: ["ADMIN", "FINANCE", "MANAGER"],
+    componentStr: "CompanySettings",
   },
 ];
 

@@ -1,82 +1,61 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import Configuration from "../configuration";
-var token = localStorage.getItem("x-access-token");
 
-export const getSettings = createAsyncThunk("settings/getSettings", async (id1) => {
-  const  id  = id1;
-  const response = await fetch(Configuration.BACK_BASEURL + "settings/getSettings", {
-    method: 'POST',
-    headers: {
-      'id':id,
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-      'x-access-token':token
-    },
-  
-  });
-  const settings = await response.json();
-  return settings;
-});
+const token = localStorage.getItem("x-access-token");
 
-export const getLogo = createAsyncThunk("settings/getLogo", async (logo) => { 
-  const response = await fetch(Configuration.BACK_BASEURL + "settings/getLogo/"+logo.logo, {
-    method: 'GET',  
-    responseType: 'blob'
-  })
-  return response;
-});
-const settingsReduce = createSlice({
+/* ================= GET SETTINGS ================= */
+export const getCompanySettings = createAsyncThunk(
+  "settings/getCompanySettings",
+  async () => {
+    const response = await fetch(
+      Configuration.BACK_BASEURL + "company-settings",
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          /* "x-access-token": token, */
+        },
+      }
+    );
+    return await response.json();
+  }
+);
+
+/* ================= UPDATE SETTINGS ================= */
+export const updateCompanySettings = createAsyncThunk(
+  "settings/updateCompanySettings",
+  async (formData) => {
+    const response = await fetch(
+      Configuration.BACK_BASEURL + "company-settings",
+      {
+        method: "PUT",
+        /* headers: {
+          "x-access-token": token,
+        }, */
+        body: formData,
+      }
+    );
+    return await response.json();
+  }
+);
+
+const settingsSlice = createSlice({
   name: "settings",
   initialState: {
-    entities: [],
     loading: false,
   },
-  reducers: {
-    settingsUpdated(state, action) {
-
-      fetch(Configuration.BACK_BASEURL + "settings/saveLogo", {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/*',
-          'x-access-token':token
-        },
-        body:action.payload.dataArray
-      });
-
-      fetch(Configuration.BACK_BASEURL + "settings/saveIcon", {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/*',
-          'x-access-token':token
-        },
-        body:action.payload.iconArray
-      });
-      fetch(Configuration.BACK_BASEURL + "settings/updateSettings", {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'x-access-token':token
-        },
-        body:JSON.stringify(action.payload.settingsObj)
-      });
-    },
-
-  },
+  reducers: {},
   extraReducers: {
-    [getSettings.pending]: (state, action) => {
+    [getCompanySettings.pending]: (state) => {
       state.loading = true;
     },
-    [getSettings.fulfilled]: (state, action) => {
+    [getCompanySettings.fulfilled]: (state) => {
       state.loading = false;
-      state.entities = [...state.entities, action.payload];
     },
-    [getSettings.rejected]: (state, action) => {
+    [getCompanySettings.rejected]: (state) => {
       state.loading = false;
     },
   },
 });
 
-export const { settingsUpdated } = settingsReduce.actions;
-
-export default settingsReduce.reducer;
+export default settingsSlice.reducer;
