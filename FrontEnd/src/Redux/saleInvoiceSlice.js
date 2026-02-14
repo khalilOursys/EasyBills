@@ -4,19 +4,25 @@ import Configuration from "../configuration";
 // Get all sale invoices
 export const fetchSaleInvoices = createAsyncThunk(
   "saleInvoices/fetchAll",
-  async () => {
-    const token = localStorage.getItem("x-access-token");
-    const response = await fetch(Configuration.BACK_BASEURL + "sale-invoices", {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        /* "x-access-token": token, */
+  async (filters) => {
+    // If no filters → empty object
+    const params = filters || {};
+
+    const query = new URLSearchParams(params).toString();
+
+    const response = await fetch(
+      Configuration.BACK_BASEURL + "sale-invoices" + (query ? "?" + query : ""),
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
       },
-    });
-    const invoices = await response.json();
-    return invoices;
-  }
+    );
+
+    return await response.json();
+  },
 );
 
 // Get invoice by ID
@@ -33,11 +39,11 @@ export const getSaleInvoice = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Get invoice by invoice number
@@ -54,11 +60,11 @@ export const getSaleInvoiceByNumber = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Create new sale invoice
@@ -77,7 +83,7 @@ export const addSaleInvoice = createAsyncThunk(
     });
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Update sale invoice
@@ -95,11 +101,11 @@ export const updateSaleInvoice = createAsyncThunk(
           /* "x-access-token": token, */
         },
         body: JSON.stringify(invoiceData),
-      }
+      },
     );
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Delete sale invoice
@@ -116,10 +122,10 @@ export const deleteSaleInvoice = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     return { id, response };
-  }
+  },
 );
 
 // Update invoice status
@@ -137,11 +143,11 @@ export const updateInvoiceStatus = createAsyncThunk(
           /* "x-access-token": token, */
         },
         body: JSON.stringify({ status }),
-      }
+      },
     );
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Upload PDF for invoice
@@ -160,11 +166,11 @@ export const uploadInvoicePDF = createAsyncThunk(
           /* "x-access-token": token, */
         },
         body: formData,
-      }
+      },
     );
     const result = await response.json();
     return { id, pdfUrl: result.pdfUrl };
-  }
+  },
 );
 
 // Filter invoices by date range
@@ -182,11 +188,11 @@ export const filterInvoicesByDate = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     const invoices = await response.json();
     return invoices;
-  }
+  },
 );
 
 // Get invoices by client
@@ -203,13 +209,68 @@ export const getInvoicesByClient = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     const invoices = await response.json();
     return invoices;
-  }
+  },
 );
 
+// Get Refund Invoice by ID
+export const getRefundInvoice = createAsyncThunk(
+  "saleInvoices/getRefundById",
+  async (id) => {
+    const response = await fetch(
+      Configuration.BACK_BASEURL + `sale-refunds/${id}`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    const invoice = await response.json();
+    return invoice;
+  },
+);
+
+// Add Refund Invoice
+export const addRefundInvoice = createAsyncThunk(
+  "saleInvoices/addRefund",
+  async (invoiceData) => {
+    const response = await fetch(Configuration.BACK_BASEURL + "sale-refunds", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(invoiceData),
+    });
+    const invoice = await response.json();
+    return invoice;
+  },
+);
+
+// Update Refund Invoice
+export const updateRefundInvoice = createAsyncThunk(
+  "saleInvoices/updateRefund",
+  async ({ id, ...invoiceData }) => {
+    const response = await fetch(
+      Configuration.BACK_BASEURL + `sale-refunds/${id}`,
+      {
+        method: "PATCH",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(invoiceData),
+      },
+    );
+    const invoice = await response.json();
+    return invoice;
+  },
+);
 const saleInvoiceSlice = createSlice({
   name: "saleInvoices",
   initialState: {
@@ -292,7 +353,7 @@ const saleInvoiceSlice = createSlice({
       .addCase(updateSaleInvoice.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.entities.findIndex(
-          (invoice) => invoice.id === action.payload.id
+          (invoice) => invoice.id === action.payload.id,
         );
         if (index !== -1) {
           state.entities[index] = action.payload;
@@ -317,7 +378,7 @@ const saleInvoiceSlice = createSlice({
       .addCase(deleteSaleInvoice.fulfilled, (state, action) => {
         state.loading = false;
         state.entities = state.entities.filter(
-          (invoice) => invoice.id !== action.payload.id
+          (invoice) => invoice.id !== action.payload.id,
         );
         if (
           state.currentInvoice &&
@@ -339,7 +400,7 @@ const saleInvoiceSlice = createSlice({
       .addCase(updateInvoiceStatus.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.entities.findIndex(
-          (invoice) => invoice.id === action.payload.id
+          (invoice) => invoice.id === action.payload.id,
         );
         if (index !== -1) {
           state.entities[index].status = action.payload.status;
@@ -359,7 +420,7 @@ const saleInvoiceSlice = createSlice({
       // Upload PDF
       .addCase(uploadInvoicePDF.fulfilled, (state, action) => {
         const index = state.entities.findIndex(
-          (invoice) => invoice.id === action.payload.id
+          (invoice) => invoice.id === action.payload.id,
         );
         if (index !== -1) {
           state.entities[index].pdfUrl = action.payload.pdfUrl;
@@ -396,6 +457,62 @@ const saleInvoiceSlice = createSlice({
         state.entities = action.payload;
       })
       .addCase(getInvoicesByClient.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
+
+      // ==============================
+      // Refund Invoice reducers
+      // ==============================
+      // Get Refund Invoice
+      .addCase(getRefundInvoice.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getRefundInvoice.fulfilled, (state, action) => {
+        state.loading = false;
+        state.currentInvoice = action.payload;
+      })
+      .addCase(getRefundInvoice.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
+
+      // Add Refund Invoice
+      .addCase(addRefundInvoice.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(addRefundInvoice.fulfilled, (state, action) => {
+        state.loading = false;
+        state.entities.push(action.payload);
+      })
+      .addCase(addRefundInvoice.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
+
+      // Update Refund Invoice
+      .addCase(updateRefundInvoice.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateRefundInvoice.fulfilled, (state, action) => {
+        state.loading = false;
+        const index = state.entities.findIndex(
+          (invoice) => invoice.id === action.payload.id,
+        );
+        if (index !== -1) {
+          state.entities[index] = action.payload;
+        }
+        if (
+          state.currentInvoice &&
+          state.currentInvoice.id === action.payload.id
+        ) {
+          state.currentInvoice = action.payload;
+        }
+      })
+      .addCase(updateRefundInvoice.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
       });

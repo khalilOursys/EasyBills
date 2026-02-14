@@ -25,6 +25,8 @@ import AjouterPayment from "./views/Settings/Payments/AjouterPayment";
 import ListPayments from "./views/Settings/Payments/ListPayments";
 import SaleInvoiceDetails from "./views/Settings/SaleInvoice/DetailFacture";
 import CompanySettings from "./views/CompanySettings";
+import ListRefundInvoice from "./views/Settings/SaleInvoiceRefund/ListRefundInvoice";
+import AddRefundInvoice from "./views/Settings/SaleInvoiceRefund/AddRefundInvoice";
 
 const dashboardRoutes = [
   // ==================== USER ====================
@@ -257,6 +259,41 @@ const dashboardRoutes = [
     icon: "fas fa-edit",
     component: AddSaleInvoice,
     componentStr: "AddSaleInvoice",
+    id_role: "ADMIN",
+    className: "hidden",
+  },
+  /* {
+    path: "/sale-invoice/detail/:id",
+    name: "Nouvelle Facture de Vente",
+    icon: "fas fa-plus-circle",
+    component: SaleInvoiceDetails,
+    componentStr: "SaleInvoiceDetails",
+    id_role: "ADMIN",
+    className: "hidden",
+  }, */
+  {
+    path: "/refund-invoices/list",
+    name: "Factures avoir",
+    icon: "fas fa-file-invoice",
+    component: ListRefundInvoice,
+    id_role: "ADMIN",
+    componentStr: "ListRefundInvoice",
+  },
+  {
+    path: "/refund-invoice/add",
+    name: "Nouvelle Facture de Vente",
+    icon: "fas fa-plus-circle",
+    component: AddRefundInvoice,
+    componentStr: "AddRefundInvoice",
+    id_role: "ADMIN",
+    className: "hidden",
+  },
+  {
+    path: "/refund-invoice/update/:id",
+    name: "Modifier Facture de Vente",
+    icon: "fas fa-edit",
+    component: AddRefundInvoice,
+    componentStr: "AddRefundInvoice",
     id_role: "ADMIN",
     className: "hidden",
   },

@@ -135,201 +135,224 @@ function SaleInvoiceDetails() {
   const exportPDF = () => {
     const doc = new jsPDF("p", "mm", "a4");
 
-    // Colors
-    const primaryColor = [41, 128, 185]; // Blue
-    const secondaryColor = [52, 152, 219]; // Light blue
+    // A4 dimensions: 210mm x 297mm
+    const pageWidth = 210;
+    const marginLeft = 14;
+    const marginRight = 14;
+    const tableWidth = pageWidth - marginLeft - marginRight; // 182mm
 
-    /* ================= HEADER ================= */
-    // Logo
-    doc.addImage(logo, "PNG", 14, 10, 40, 15);
+    // But we need to account for content width - let's use 175mm to be safe
+    const safeTableWidth = 175;
 
-    // Invoice title based on type
+    /* ================= LOGO ================= */
+    doc.addImage(logo, "PNG", marginLeft, 10, 40, 15);
+
+    /* ================= TITLE ================= */
     const invoiceTitle = getTypeLabel(type).toUpperCase();
-    doc.setFontSize(20);
-    doc.setTextColor(...primaryColor);
-    doc.text(invoiceTitle, 160, 20, { align: "right" });
-
-    // Invoice details
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`N° : ${invoiceNumber}`, 160, 28, { align: "right" });
-    doc.text(`Date : ${date}`, 160, 33, { align: "right" });
-    doc.text(`Statut : ${status}`, 160, 38, { align: "right" });
-
-    /* ================= SELLER (YOUR COMPANY) ================= */
-    const sellerY = 55;
-    doc.setFontSize(12);
-    doc.setTextColor(...primaryColor);
-    doc.text("VOTRE ENTREPRISE", 14, sellerY);
-
-    doc.setDrawColor(...primaryColor);
-    doc.setLineWidth(0.5);
-    doc.line(14, sellerY + 2, 60, sellerY + 2);
-
-    doc.setFontSize(9);
-    doc.setTextColor(0, 0, 0);
-    doc.text(companyInfo.name, 14, sellerY + 10);
-    doc.text(companyInfo.address, 14, sellerY + 15);
-    doc.text(companyInfo.city, 14, sellerY + 20);
-    doc.text(`Tél: ${companyInfo.phone}`, 14, sellerY + 25);
-    doc.text(companyInfo.email, 14, sellerY + 30);
-    doc.text(`SIRET: ${companyInfo.siret}`, 14, sellerY + 35);
-    doc.text(`TVA: ${companyInfo.vatNumber}`, 14, sellerY + 40);
-
-    /* ================= CLIENT INFO ================= */
-    const clientY = 55;
-    doc.setFontSize(12);
-    doc.setTextColor(...primaryColor);
-    doc.text("CLIENT", 120, clientY);
-
-    doc.setDrawColor(...primaryColor);
-    doc.setLineWidth(0.5);
-    doc.line(120, clientY + 2, 150, clientY + 2);
-
-    // Client box with border
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-    doc.rect(118, clientY + 5, 78, 45);
-
-    doc.setFontSize(9);
-    doc.setTextColor(0, 0, 0);
-    doc.text(clientDetails?.name || "Nom du client", 122, clientY + 12);
-    doc.text(clientDetails?.address || "Adresse", 122, clientY + 17);
-    doc.text(clientDetails?.city || "Ville", 122, clientY + 22);
-    doc.text(clientDetails?.country || "France", 122, clientY + 27);
-    doc.text(
-      `Tél: ${clientDetails?.phone || "Non renseigné"}`,
-      122,
-      clientY + 32
-    );
-    doc.text(clientDetails?.email || "Email non renseigné", 122, clientY + 37);
-    doc.text(
-      `TVA: ${clientDetails?.vatNumber || "Non applicable"}`,
-      122,
-      clientY + 42
-    );
-
-    /* ================= INVOICE ITEMS TABLE ================= */
-    const tableY = 115;
-
-    // Table header with background
-    doc.setFillColor(...primaryColor);
-    doc.rect(14, tableY - 7, 182, 8, "F");
+    doc.setFontSize(16);
+    doc.text(invoiceTitle, pageWidth / 2, 18, { align: "center" });
 
     doc.setFontSize(10);
-    doc.setTextColor(255, 255, 255);
-    doc.text("DESCRIPTION", 16, tableY);
-    doc.text("QTÉ", 120, tableY, { align: "center" });
-    doc.text("P.U. HT", 140, tableY, { align: "right" });
-    doc.text("TVA %", 155, tableY, { align: "center" });
-    doc.text("MONTANT HT", 180, tableY, { align: "right" });
-
-    // Table rows
-    let currentY = tableY + 10;
-    invoiceItems.forEach((item, index) => {
-      if (currentY > 250) {
-        doc.addPage();
-        currentY = 20;
-      }
-
-      // Alternate row background
-      if (index % 2 === 0) {
-        doc.setFillColor(250, 250, 250);
-        doc.rect(14, currentY - 4, 182, 8, "F");
-      }
-
-      doc.setFontSize(9);
-      doc.setTextColor(0, 0, 0);
-
-      // Product name (with line break if too long)
-      const productName = item.productName;
-      if (productName.length > 40) {
-        doc.text(productName.substring(0, 40) + "...", 16, currentY);
-      } else {
-        doc.text(productName, 16, currentY);
-      }
-
-      doc.text(item.quantity.toString(), 120, currentY, { align: "center" });
-      doc.text(`${item.price.toFixed(2)} €`, 140, currentY, { align: "right" });
-      doc.text(`${item.vatRate}%`, 155, currentY, { align: "center" });
-      doc.text(`${item.totalHT.toFixed(2)} €`, 180, currentY, {
-        align: "right",
-      });
-
-      currentY += 10;
+    doc.text(`N° de document : ${invoiceNumber}`, marginLeft, 32);
+    doc.text(`Date : ${date}`, marginLeft, 38);
+    doc.text(`Statut : ${status}`, pageWidth - marginRight, 32, {
+      align: "right",
     });
 
-    /* ================= TOTALS SECTION ================= */
-    const totalsY = Math.max(currentY + 20, 220);
+    /* ================= SELLER ================= */
+    doc.setFontSize(11);
+    doc.text("VOTRE ENTREPRISE", marginLeft, 48);
 
-    // Payment terms on left
     doc.setFontSize(10);
-    doc.setTextColor(...primaryColor);
-    doc.text("CONDITIONS", 14, totalsY);
+    doc.text(companyInfo.name, marginLeft, 55);
+    doc.text(companyInfo.address, marginLeft, 61);
+    doc.text(companyInfo.city, marginLeft, 67);
+    doc.text(`Tél: ${companyInfo.phone}`, marginLeft, 73);
+    doc.text(`SIRET: ${companyInfo.siret}`, marginLeft, 79);
 
-    doc.setDrawColor(...primaryColor);
-    doc.setLineWidth(0.3);
-    doc.line(14, totalsY + 2, 50, totalsY + 2);
+    /* ================= CLIENT (WITH BORDER) ================= */
+    const clientBoxX = pageWidth - marginRight - 75; // 210 - 14 - 75 = 121
+    doc.setFontSize(11);
+    doc.text("CLIENT", clientBoxX + 2, 48);
+    doc.rect(clientBoxX, 52, 75, 35);
 
-    doc.setFontSize(9);
+    doc.setFontSize(10);
+    doc.text(clientDetails?.name || "Nom du client", clientBoxX + 4, 58);
+    doc.text(clientDetails?.address || "Adresse", clientBoxX + 4, 64);
+    doc.text(clientDetails?.city || "Ville", clientBoxX + 4, 70);
+    doc.text(clientDetails?.country || "France", clientBoxX + 4, 76);
+    doc.text(
+      `Tél: ${clientDetails?.phone || "Non renseigné"}`,
+      clientBoxX + 4,
+      82
+    );
+
+    /* ================= TABLE ================= */
+    const tableStartY = 100;
+
+    // Create table data
+    const tableData = [
+      ["Désignation", "Quantité", "P.U. H.T.", "T.V.A.", "Montant H.T."],
+      ...invoiceItems.map((item) => {
+        const product = products.find((p) => p.id === item.productId);
+        return [
+          product?.name || item.productName || "",
+          item.quantity.toString(),
+          `${item.price.toFixed(2)} €`,
+          `${item.vatRate} %`,
+          `${item.totalHT.toFixed(2)} €`,
+        ];
+      }),
+    ];
+
+    // Draw table using autoTable
+    autoTable(doc, {
+      startY: tableStartY,
+      head: [tableData[0]],
+      body: tableData.slice(1),
+      styles: {
+        fontSize: 9,
+        cellPadding: 4,
+        overflow: "linebreak",
+        lineWidth: 0, // No internal borders
+      },
+      headStyles: {
+        fillColor: [255, 255, 255],
+        textColor: 0,
+        fontStyle: "bold",
+        lineWidth: 0,
+      },
+      bodyStyles: {
+        lineWidth: 0,
+      },
+      // Adjusted column widths to fit within 175mm
+      columnStyles: {
+        0: { cellWidth: 78 }, // Désignation: 80mm
+        1: { cellWidth: 22, halign: "center" }, // Quantité: 20mm
+        2: { cellWidth: 25, halign: "right" }, // P.U. H.T.: 25mm
+        3: { cellWidth: 20, halign: "center" }, // T.V.A.: 20mm
+        4: { cellWidth: 30, halign: "right" }, // Montant H.T.: 30mm
+        // Total: 80 + 20 + 25 + 20 + 30 = 175mm
+      },
+      margin: { left: marginLeft, right: marginRight },
+      tableWidth: safeTableWidth,
+      theme: "plain",
+    });
+
+    /* ================= DRAW TABLE BORDERS ================= */
+    const tableEndY = doc.lastAutoTable.finalY;
+    const tableHeight = tableEndY - tableStartY;
+
+    // Draw blue border around table
+    doc.setDrawColor(41, 128, 185);
+    doc.setLineWidth(0.5);
+
+    // Top border (adjust X position to center within margins)
+    const tableX = marginLeft + (tableWidth - safeTableWidth) / 2;
+    doc.line(tableX, tableStartY, tableX + safeTableWidth, tableStartY);
+
+    // Bottom border
+    doc.line(tableX, tableEndY, tableX + safeTableWidth, tableEndY);
+
+    // Left border
+    doc.line(tableX, tableStartY, tableX, tableEndY);
+
+    // Right border
+    doc.line(
+      tableX + safeTableWidth,
+      tableStartY,
+      tableX + safeTableWidth,
+      tableEndY
+    );
+
+    // Draw header bottom border (separator)
+    const headerBottomY = tableStartY + 8;
+    doc.line(tableX, headerBottomY, tableX + safeTableWidth, headerBottomY);
+
+    /* ================= TOTALS + PAYMENT INFO ================= */
+    const y = tableEndY + 15;
+
+    /* LEFT: PAYMENT INFO */
+    doc.setFontSize(11);
+    doc.setTextColor(41, 128, 185);
+    doc.text("CONDITIONS DE PAIEMENT", marginLeft, y);
+    doc.setFontSize(10);
     doc.setTextColor(0, 0, 0);
-    doc.text("Mode de paiement :", 14, totalsY + 10);
-    doc.text("Virement bancaire", 60, totalsY + 10);
 
-    doc.text("Date d'échéance :", 14, totalsY + 16);
-    // Calculate due date (30 days from invoice date)
+    doc.text("Mode de règlement :", marginLeft, y + 8);
+    doc.text("Virement bancaire", marginLeft + 41, y + 8);
+
+    doc.text("Date d'échéance :", marginLeft, y + 16);
     const dueDate = new Date(date);
     dueDate.setDate(dueDate.getDate() + 30);
     const dueDateStr = dueDate.toLocaleDateString("fr-FR");
-    doc.text(dueDateStr, 60, totalsY + 16);
+    doc.text(dueDateStr, marginLeft + 41, y + 16);
 
-    doc.text("IBAN :", 14, totalsY + 22);
-    doc.text("FR76 1234 5678 9012 3456 7890 123", 60, totalsY + 22);
+    doc.text("IBAN :", marginLeft, y + 24);
+    doc.text("FR76 1234 5678 9012 3456 7890 123", marginLeft + 41, y + 24);
 
-    doc.text("BIC :", 14, totalsY + 28);
-    doc.text("ABCDEDFXXX", 60, totalsY + 28);
+    doc.text("BIC :", marginLeft, y + 32);
+    doc.text("ABCDEDFXXX", marginLeft + 41, y + 32);
 
-    // Totals box on right
-    doc.setFillColor(245, 245, 245);
-    doc.roundedRect(130, totalsY - 5, 62, 40, 3, 3, "F");
+    /* RIGHT: TOTALS (WITH BORDER) */
+    const totalsX = pageWidth - marginRight - 60; // Right aligned with margin
+    const totalsY = y - 6;
+    const totalsWidth = 60;
+    const totalsHeight = 45;
 
-    doc.setDrawColor(...primaryColor);
+    // Draw totals box
+    doc.setDrawColor(41, 128, 185);
     doc.setLineWidth(0.5);
-    doc.roundedRect(130, totalsY - 5, 62, 40, 3, 3);
+    doc.rect(totalsX, totalsY, totalsWidth, totalsHeight);
+
+    doc.setFillColor(245, 245, 245);
+    doc.rect(totalsX, totalsY, totalsWidth, totalsHeight, "F");
+
+    doc.setDrawColor(41, 128, 185);
+    doc.rect(totalsX, totalsY, totalsWidth, totalsHeight);
 
     doc.setFontSize(10);
-    doc.text("Total HT :", 132, totalsY + 5);
-    doc.text(`${totalHT.toFixed(2)} €`, 188, totalsY + 5, { align: "right" });
-
-    doc.text("Total TVA :", 132, totalsY + 13);
-    doc.text(`${totalVAT.toFixed(2)} €`, 188, totalsY + 13, { align: "right" });
+    doc.text(`Total H.T. : ${totalHT.toFixed(2)} €`, totalsX + 3, y);
+    doc.text(`Total T.V.A. : ${totalVAT.toFixed(2)} €`, totalsX + 3, y + 7);
 
     doc.setFontSize(12);
-    doc.setTextColor(...primaryColor);
-    doc.text("Total TTC :", 132, totalsY + 25);
-    doc.text(`${totalTTC.toFixed(2)} €`, 188, totalsY + 25, { align: "right" });
+    doc.text(`Total T.T.C. : ${totalTTC.toFixed(2)} €`, totalsX + 3, y + 16);
+
+    /* ================= NOTES ================= */
+    const notesY = y + 30;
+
+    if (type === "QUOTATION") {
+      doc.setFontSize(9);
+      doc.setTextColor(128, 0, 0);
+      doc.text(
+        "⚠️ Ce devis est valable 30 jours à compter de sa date d'émission.",
+        marginLeft,
+        notesY
+      );
+      doc.text(
+        "Les prix sont exprimés en euros hors taxes.",
+        marginLeft,
+        notesY + 5
+      );
+    }
 
     /* ================= FOOTER ================= */
-    const footerY = 280;
-    doc.setFontSize(8);
-    doc.setTextColor(100, 100, 100);
+    const footerY = 285;
+    doc.setFontSize(9);
+    doc.text("Merci pour votre confiance", pageWidth / 2, footerY, {
+      align: "center",
+    });
 
-    doc.line(14, footerY - 5, 196, footerY - 5);
-
-    doc.text("En votre aimable règlement", 105, footerY, { align: "center" });
-    doc.text(companyInfo.name, 105, footerY + 5, { align: "center" });
-    doc.text(
-      `Tél: ${companyInfo.phone} | Email: ${companyInfo.email}`,
-      105,
-      footerY + 10,
-      { align: "center" }
-    );
-
-    /* ================= SAVE PDF ================= */
+    /* ================= SAVE ================= */
     const fileName =
       type === "QUOTATION"
         ? `Devis_${invoiceNumber}.pdf`
-        : `Facture_Vente_${invoiceNumber}.pdf`;
+        : type === "DELIVERY_NOTE"
+        ? `BL_${invoiceNumber}.pdf`
+        : type === "SALE_REFUND"
+        ? `Avoir_${invoiceNumber}.pdf`
+        : `Facture_${invoiceNumber}.pdf`;
+
     doc.save(fileName);
   };
 

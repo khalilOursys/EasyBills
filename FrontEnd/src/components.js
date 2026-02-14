@@ -29,6 +29,8 @@ import AddPurchaseInvoice from "./views/Settings/Invoice/AddFacture";
 import ListSaleInvoice from "./views/Settings/SaleInvoice/ListSaleInvoice";
 import AddSaleInvoice from "./views/Settings/SaleInvoice/AddSaleInvoice";
 import SaleInvoiceDetails from "./views/Settings/SaleInvoice/DetailFacture";
+import ListRefundInvoice from "./views/Settings/SaleInvoiceRefund/ListRefundInvoice";
+import AddRefundInvoice from "./views/Settings/SaleInvoiceRefund/AddRefundInvoice";
 
 // Payment Components
 import AjouterPayment from "./views/Settings/Payments/AjouterPayment";
@@ -58,6 +60,8 @@ const Components = {
   AjouterPayment,
   ListPayments,
   CompanySettings,
+  ListRefundInvoice,
+  AddRefundInvoice,
 };
 
 export default Components;

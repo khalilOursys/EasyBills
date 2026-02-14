@@ -11,6 +11,7 @@ import { PurchaseInvoiceModule } from './purchase-invoice/purchase-invoice.modul
 import { SaleInvoiceModule } from './sale-invoice/sale-invoice.module';
 import { PaymentsModule } from './payments/payments.module';
 import { CompanySettingsModule } from './company-settings/company-settings.module';
+import { RefundInvoiceModule } from './refund-invoice/refund-invoice.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { CompanySettingsModule } from './company-settings/company-settings.modul
     SaleInvoiceModule,
     PaymentsModule,
     CompanySettingsModule,
+    RefundInvoiceModule,
   ],
   controllers: [AppController],
   providers: [PrismaService],

@@ -27,14 +27,14 @@ enum PaymentMethod {
 enum PurchaseInvoiceType {
   PURCHASE_ORDER
   PURCHASE_INVOICE
-  PURCHASE_REFUND
+  PURCHASE_REFUND // CREDIT NOTE FROM SUPPLIER
 }
 
 enum SaleInvoiceType {
   QUOTATION
   DELIVERY_NOTE
   SALE_INVOICE
-  SALE_REFUND
+  SALE_REFUND // CREDIT NOTE FOR CUSTOMER
 }
 
 enum InvoiceStatus {
@@ -138,6 +138,11 @@ model PurchaseInvoice {
   type          PurchaseInvoiceType
   status        InvoiceStatus           @default(DRAFT)
 
+  // CREDIT NOTE RELATION (self-relational)
+  originalInvoiceId Int?
+  originalInvoice   PurchaseInvoice? @relation("PurchaseRefunds", fields: [originalInvoiceId], references: [id])
+  refunds           PurchaseInvoice[] @relation("PurchaseRefunds")
+
   pdfUrl        String?
 
   supplierId    Int
@@ -175,6 +180,11 @@ model SaleInvoice {
   date          DateTime           @default(now())
   type          SaleInvoiceType
   status        InvoiceStatus      @default(DRAFT)
+
+  // CREDIT NOTE RELATION (self-relational)
+  originalInvoiceId Int?
+  originalInvoice   SaleInvoice? @relation("SaleRefunds", fields: [originalInvoiceId], references: [id])
+  refunds           SaleInvoice[] @relation("SaleRefunds")
 
   clientId      Int
   client        Client             @relation(fields: [clientId], references: [id])
