@@ -104,7 +104,7 @@ function ListRefundInvoice() {
         <div className="actions-right">
           <Button
             onClick={() =>
-              navigate.push("/sale-invoice/update/" + cell.getValue())
+              navigate.push("/refund-invoice/update/" + cell.getValue())
             }
             variant="warning"
             size="sm"
@@ -122,7 +122,7 @@ function ListRefundInvoice() {
           </Button>
           <Button
             onClick={() =>
-              navigate.push("/sale-invoice/detail/" + cell.getValue())
+              navigate.push("/refund-invoice/detail/" + cell.getValue())
             }
             variant="info"
             size="sm"
@@ -199,16 +199,16 @@ function ListRefundInvoice() {
             className="btn-wd mr-1"
             type="button"
             variant="success"
-            onClick={() => navigate.push("/sale-invoice/add")}
+            onClick={() => navigate.push("/refund-invoice/add")}
           >
             <span className="btn-label">
               <i className="fas fa-plus"></i>
             </span>
-            Nouvelle facture de vente
+            Nouvelle facture avoir
           </Button>
         </Col>
         <Col md="12">
-          <h4 className="title">Factures de Vente</h4>
+          <h4 className="title">Factures avoir</h4>
           <Card>
             <Card.Body>
               <MaterialReactTable

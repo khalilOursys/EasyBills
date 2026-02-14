@@ -180,7 +180,7 @@ model SaleInvoice {
   date          DateTime           @default(now())
   type          SaleInvoiceType
   status        InvoiceStatus      @default(DRAFT)
-
+  taxStamp      Float              @default(1)
   // CREDIT NOTE RELATION (self-relational)
   originalInvoiceId Int?
   originalInvoice   SaleInvoice? @relation("SaleRefunds", fields: [originalInvoiceId], references: [id])

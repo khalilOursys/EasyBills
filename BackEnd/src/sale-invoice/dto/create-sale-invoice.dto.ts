@@ -72,6 +72,11 @@ export class CreateSaleInvoiceDto {
   @IsOptional()
   totalTTC?: number;
 
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  taxStamp?: number;
+
   @IsString()
   @IsOptional()
   pdfUrl?: string;

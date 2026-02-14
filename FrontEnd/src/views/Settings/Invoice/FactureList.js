@@ -1,7 +1,7 @@
 import { Button, Card, Container, Row, Col, Badge } from "react-bootstrap";
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import MaterialReactTable from "material-react-table";
 import { toast, ToastContainer } from "react-toastify";
 import SweetAlert from "react-bootstrap-sweetalert";
@@ -11,20 +11,24 @@ import {
 } from "../../../Redux/purchaseInvoiceSlice";
 
 function ListPurchaseInvoice() {
+  const location = useLocation();
+
+  // Get the last path segment
+  const lastPathSegment = location.pathname.split("/").pop();
   const notify = (type, msg) => {
     if (type === 1)
       toast.success(
         <strong>
           <i className="fas fa-check-circle"></i>
           {msg}
-        </strong>
+        </strong>,
       );
     else
       toast.error(
         <strong>
           <i className="fas fa-exclamation-circle"></i>
           {msg}
-        </strong>
+        </strong>,
       );
   };
 
@@ -70,10 +74,10 @@ function ListPurchaseInvoice() {
             {status === "DRAFT"
               ? "Brouillon"
               : status === "VALIDATED"
-              ? "Validée"
-              : status === "PAID"
-              ? "Payée"
-              : "Annulée"}
+                ? "Validée"
+                : status === "PAID"
+                  ? "Payée"
+                  : "Annulée"}
           </Badge>
         );
       },
@@ -128,7 +132,9 @@ function ListPurchaseInvoice() {
 
   const fetchInvoices = async () => {
     try {
-      const response = await dispatch(fetchPurchaseInvoices());
+      const response = await dispatch(
+        fetchPurchaseInvoices({ type: lastPathSegment }),
+      );
       if (response.payload) {
         setInvoices(response.payload);
       }
@@ -170,7 +176,7 @@ function ListPurchaseInvoice() {
         confirmBtnText="Oui, supprimer"
         cancelBtnText="Annuler"
         showCancel
-      />
+      />,
     );
   };
 

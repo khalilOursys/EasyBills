@@ -199,13 +199,58 @@ const dashboardRoutes = [
   },
 
   // ==================== PURCHASE INVOICES ====================
-  {
+  /* {
+    collapse: true,
+    path: "/tableauDebord",
+    name: "Facture d'achat",
+    state: "extractions",
+    icon: "far fa-copy",
+    id_role: "ADMIN",
+    views: [
+      {
+        path: "/purchase-invoices/list",
+        name: "Purchase Invoices",
+        icon: "fas fa-file-invoice-dollar",
+        component: ListPurchaseInvoice,
+        id_role: "ADMIN",
+        componentStr: "ListPurchaseInvoice",
+      },
+    ],
+  }, */
+  /* {
     path: "/purchase-invoices/list",
     name: "Purchase Invoices",
     icon: "fas fa-file-invoice-dollar",
     component: ListPurchaseInvoice,
     id_role: "ADMIN",
     componentStr: "ListPurchaseInvoice",
+  }, */
+
+  {
+    collapse: true,
+    path: "/sale-invoices/list",
+    name: "Factures d'achat",
+    state: "extractions",
+    icon: "fas fa-file-invoice-dollar",
+    id_role: "ADMIN",
+    views: [
+      {
+        path: "/sale-invoices/list/PURCHASE_ORDER",
+        name: "Devis",
+        icon: "fas fa-file-invoice",
+        component: ListSaleInvoice,
+        id_role: "ADMIN",
+        componentStr: "ListSaleInvoice",
+      },
+      {
+        path: "/sale-invoices/list/PURCHASE_INVOICE",
+        name: "Bon de livraison",
+        icon: "fas fa-file-invoice",
+        component: ListSaleInvoice,
+        id_role: "ADMIN",
+        componentStr: "ListSaleInvoice",
+      },
+    ],
   },
   {
     path: "/purchase-invoice/add",
@@ -228,12 +273,38 @@ const dashboardRoutes = [
 
   // ==================== SALE INVOICES ====================
   {
+    collapse: true,
     path: "/sale-invoices/list",
     name: "Factures de Vente",
-    icon: "fas fa-file-invoice",
-    component: ListSaleInvoice,
+    state: "extractions",
+    icon: "fas fa-file-invoice-dollar",
     id_role: "ADMIN",
-    componentStr: "ListSaleInvoice",
+    views: [
+      {
+        path: "/sale-invoices/list/QUOTATION",
+        name: "Devis",
+        icon: "fas fa-file-invoice",
+        component: ListSaleInvoice,
+        id_role: "ADMIN",
+        componentStr: "ListSaleInvoice",
+      },
+      {
+        path: "/sale-invoices/list/DELIVERY_NOTE",
+        name: "Bon de livraison",
+        icon: "fas fa-file-invoice",
+        component: ListSaleInvoice,
+        id_role: "ADMIN",
+        componentStr: "ListSaleInvoice",
+      },
+      {
+        path: "/sale-invoices/list/SALE_INVOICE",
+        name: "Facture vente",
+        icon: "fas fa-file-invoice",
+        component: ListSaleInvoice,
+        id_role: "ADMIN",
+        componentStr: "ListSaleInvoice",
+      },
+    ],
   },
   {
     path: "/sale-invoice/detail/:id",

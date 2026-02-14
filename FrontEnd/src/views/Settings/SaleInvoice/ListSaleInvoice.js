@@ -1,7 +1,7 @@
 import { Button, Card, Container, Row, Col, Badge } from "react-bootstrap";
 import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
 import MaterialReactTable from "material-react-table";
 import { toast, ToastContainer } from "react-toastify";
 import SweetAlert from "react-bootstrap-sweetalert";
@@ -17,19 +17,23 @@ function ListSaleInvoice() {
         <strong>
           <i className="fas fa-check-circle"></i>
           {msg}
-        </strong>
+        </strong>,
       );
     else
       toast.error(
         <strong>
           <i className="fas fa-exclamation-circle"></i>
           {msg}
-        </strong>
+        </strong>,
       );
   };
 
   const [alert, setAlert] = useState(null);
   const navigate = useHistory();
+  const location = useLocation();
+
+  // Get the last path segment
+  const type = location.pathname.split("/").pop();
   const dispatch = useDispatch();
   const [invoices, setInvoices] = useState([]);
 
@@ -79,10 +83,10 @@ function ListSaleInvoice() {
             {status === "DRAFT"
               ? "Brouillon"
               : status === "VALIDATED"
-              ? "Validée"
-              : status === "PAID"
-              ? "Payée"
-              : "Annulée"}
+                ? "Validée"
+                : status === "PAID"
+                  ? "Payée"
+                  : "Annulée"}
           </Badge>
         );
       },
@@ -137,7 +141,7 @@ function ListSaleInvoice() {
 
   const fetchInvoices = async () => {
     try {
-      const response = await dispatch(fetchSaleInvoices());
+      const response = await dispatch(fetchSaleInvoices({ type: type }));
       if (response.payload) {
         setInvoices(response.payload);
       }
@@ -179,7 +183,7 @@ function ListSaleInvoice() {
         confirmBtnText="Oui, supprimer"
         cancelBtnText="Annuler"
         showCancel
-      />
+      />,
     );
   };
 
@@ -197,7 +201,7 @@ function ListSaleInvoice() {
             className="btn-wd mr-1"
             type="button"
             variant="success"
-            onClick={() => navigate.push("/sale-invoice/add")}
+            onClick={() => navigate.push("/sale-invoice/add/" + type)}
           >
             <span className="btn-label">
               <i className="fas fa-plus"></i>
