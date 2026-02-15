@@ -228,27 +228,27 @@ const dashboardRoutes = [
 
   {
     collapse: true,
-    path: "/sale-invoices/list",
+    path: "/purchase-invoices/list",
     name: "Factures d'achat",
-    state: "extractions",
+    state: "purchase",
     icon: "fas fa-file-invoice-dollar",
     id_role: "ADMIN",
     views: [
       {
-        path: "/sale-invoices/list/PURCHASE_ORDER",
-        name: "Devis",
-        icon: "fas fa-file-invoice",
-        component: ListSaleInvoice,
+        path: "/purchase-invoices/list/PURCHASE_ORDER",
+        name: "Bon de commande",
+        icon: "fas fa-file-invoice-dollar",
+        component: ListPurchaseInvoice,
         id_role: "ADMIN",
-        componentStr: "ListSaleInvoice",
+        componentStr: "ListPurchaseInvoice",
       },
       {
-        path: "/sale-invoices/list/PURCHASE_INVOICE",
-        name: "Bon de livraison",
-        icon: "fas fa-file-invoice",
-        component: ListSaleInvoice,
+        path: "/purchase-invoices/list/PURCHASE_INVOICE",
+        name: "Facture achat",
+        icon: "fas fa-file-invoice-dollar",
+        component: ListPurchaseInvoice,
         id_role: "ADMIN",
-        componentStr: "ListSaleInvoice",
+        componentStr: "ListPurchaseInvoice",
       },
     ],
   },
@@ -276,7 +276,7 @@ const dashboardRoutes = [
     collapse: true,
     path: "/sale-invoices/list",
     name: "Factures de Vente",
-    state: "extractions",
+    state: "sale",
     icon: "fas fa-file-invoice-dollar",
     id_role: "ADMIN",
     views: [
@@ -342,14 +342,14 @@ const dashboardRoutes = [
     id_role: "ADMIN",
     className: "hidden",
   }, */
-  {
+  /* {
     path: "/refund-invoices/list",
     name: "Factures avoir",
     icon: "fas fa-file-invoice",
     component: ListRefundInvoice,
     id_role: "ADMIN",
     componentStr: "ListRefundInvoice",
-  },
+  }, */
   {
     path: "/refund-invoice/add",
     name: "Nouvelle Facture de Vente",

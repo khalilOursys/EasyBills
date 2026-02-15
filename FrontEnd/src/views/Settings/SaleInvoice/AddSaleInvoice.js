@@ -50,10 +50,10 @@ function AddSaleInvoice() {
   const location = useLocation();
 
   // Get the last path segment
-  const type = location.pathname.split("/").pop();
 
   const { id: paramId } = useParams();
   const id = !isNaN(paramId) ? paramId : null;
+  const typeFromURL = isNaN(paramId) ? location.pathname.split("/").pop() : "";
 
   const [invoiceItems, setInvoiceItems] = useState([]);
   const [invoiceNumber, setInvoiceNumber] = useState("");
@@ -63,7 +63,7 @@ function AddSaleInvoice() {
   const [totalHT, setTotalHT] = useState(0);
   const [totalTTC, setTotalTTC] = useState(0);
   const [totalVAT, setTotalVAT] = useState(0);
-  /* const [type, setType] = useState("SALE_INVOICE"); */
+  const [type, setType] = useState(typeFromURL);
   const [status, setStatus] = useState("DRAFT");
 
   // New state for invoice type selection and fetched delivery notes
@@ -285,6 +285,7 @@ function AddSaleInvoice() {
       vatRate: item.vatRate,
       vatAmount: item.vatAmount,
     }));
+    console.log(items);
 
     try {
       const invoiceData = {
@@ -328,10 +329,8 @@ function AddSaleInvoice() {
 
   const vatRateOptions = [
     { value: 0, label: "0%" },
-    { value: 5.5, label: "5.5%" },
-    { value: 10, label: "10%" },
+    { value: 7, label: "7%" },
     { value: 19, label: "19%" },
-    { value: 20, label: "20%" },
   ];
 
   const invoiceTypeOptions = [

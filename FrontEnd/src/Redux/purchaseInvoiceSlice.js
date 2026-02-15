@@ -5,10 +5,15 @@ import Configuration from "../configuration";
 // Get all purchase invoices
 export const fetchPurchaseInvoices = createAsyncThunk(
   "purchaseInvoices/fetchAll",
-  async () => {
+  async (filters) => {
     const token = localStorage.getItem("x-access-token");
+    const params = filters || {};
+
+    const query = new URLSearchParams(params).toString();
     const response = await fetch(
-      Configuration.BACK_BASEURL + "purchase-invoices",
+      Configuration.BACK_BASEURL +
+        "purchase-invoices" +
+        (query ? "?" + query : ""),
       {
         method: "GET",
         headers: {
@@ -16,11 +21,11 @@ export const fetchPurchaseInvoices = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     const invoices = await response.json();
     return invoices;
-  }
+  },
 );
 
 // Get invoice by ID
@@ -37,11 +42,11 @@ export const getPurchaseInvoice = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Get invoice by invoice number
@@ -58,11 +63,11 @@ export const getPurchaseInvoiceByNumber = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Create new purchase invoice
@@ -80,11 +85,11 @@ export const addPurchaseInvoice = createAsyncThunk(
           /* "x-access-token": token, */
         },
         body: JSON.stringify(invoiceData),
-      }
+      },
     );
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Update purchase invoice
@@ -102,11 +107,11 @@ export const updatePurchaseInvoice = createAsyncThunk(
           /* "x-access-token": token, */
         },
         body: JSON.stringify(invoiceData),
-      }
+      },
     );
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Delete purchase invoice
@@ -123,10 +128,10 @@ export const deletePurchaseInvoice = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     return { id, response };
-  }
+  },
 );
 
 // Update invoice status
@@ -144,11 +149,11 @@ export const updateInvoiceStatus = createAsyncThunk(
           /* "x-access-token": token, */
         },
         body: JSON.stringify({ status }),
-      }
+      },
     );
     const invoice = await response.json();
     return invoice;
-  }
+  },
 );
 
 // Upload PDF for invoice
@@ -167,11 +172,11 @@ export const uploadInvoicePDF = createAsyncThunk(
           /* "x-access-token": token, */
         },
         body: formData,
-      }
+      },
     );
     const result = await response.json();
     return { id, pdfUrl: result.pdfUrl };
-  }
+  },
 );
 
 // Filter invoices by date range
@@ -189,11 +194,11 @@ export const filterInvoicesByDate = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     const invoices = await response.json();
     return invoices;
-  }
+  },
 );
 
 // Get invoices by supplier
@@ -210,11 +215,11 @@ export const getInvoicesBySupplier = createAsyncThunk(
           "Content-Type": "application/json",
           /* "x-access-token": token, */
         },
-      }
+      },
     );
     const invoices = await response.json();
     return invoices;
-  }
+  },
 );
 
 const purchaseInvoiceSlice = createSlice({
@@ -299,7 +304,7 @@ const purchaseInvoiceSlice = createSlice({
       .addCase(updatePurchaseInvoice.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.entities.findIndex(
-          (invoice) => invoice.id === action.payload.id
+          (invoice) => invoice.id === action.payload.id,
         );
         if (index !== -1) {
           state.entities[index] = action.payload;
@@ -324,7 +329,7 @@ const purchaseInvoiceSlice = createSlice({
       .addCase(deletePurchaseInvoice.fulfilled, (state, action) => {
         state.loading = false;
         state.entities = state.entities.filter(
-          (invoice) => invoice.id !== action.payload.id
+          (invoice) => invoice.id !== action.payload.id,
         );
         if (
           state.currentInvoice &&
@@ -346,7 +351,7 @@ const purchaseInvoiceSlice = createSlice({
       .addCase(updateInvoiceStatus.fulfilled, (state, action) => {
         state.loading = false;
         const index = state.entities.findIndex(
-          (invoice) => invoice.id === action.payload.id
+          (invoice) => invoice.id === action.payload.id,
         );
         if (index !== -1) {
           state.entities[index].status = action.payload.status;
@@ -366,7 +371,7 @@ const purchaseInvoiceSlice = createSlice({
       // Upload PDF
       .addCase(uploadInvoicePDF.fulfilled, (state, action) => {
         const index = state.entities.findIndex(
-          (invoice) => invoice.id === action.payload.id
+          (invoice) => invoice.id === action.payload.id,
         );
         if (index !== -1) {
           state.entities[index].pdfUrl = action.payload.pdfUrl;

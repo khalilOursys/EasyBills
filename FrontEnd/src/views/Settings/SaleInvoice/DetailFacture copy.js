@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import logo from "../../../assets/img/logo44.png";
+import logo from "../../../assets/img/logo.png";
 import {
   Button,
   Card,
@@ -36,14 +36,13 @@ function SaleInvoiceDetails() {
   const [totalVAT, setTotalVAT] = useState(0);
   const [clientDetails, setClientDetails] = useState({});
   const [companyInfo, setCompanyInfo] = useState({
-    name: "Orale Wave",
-    address: "Route Sidi Mansour km 7 Sfax",
-    city: "Sfax, Tunisie",
-    phone: "27737857",
-    email: "contact@oralwave.store",
+    name: "MedicaCom",
+    address: "123 Rue du Commerce",
+    city: "75000 Paris, France",
+    phone: "01 23 45 67 89",
+    email: "contact@medicacom.fr",
     siret: "123 456 789 00012",
     vatNumber: "FR12 123456789",
-    mf: "1920515/B/B/M/000",
   });
 
   /* ================= FETCH DATA ================= */
@@ -60,29 +59,31 @@ function SaleInvoiceDetails() {
       const invoiceRes = await dispatch(getSaleInvoice(id));
       const data = invoiceRes.payload;
 
-      setInvoiceNumber(data.invoiceNumber || "");
+      setInvoiceNumber(data.invoiceNumber);
       setDate(data.date?.split("T")[0] || "");
-      setType(data.type || "");
-      setStatus(data.status || "");
+      setType(data.type);
+      setStatus(data.status);
       setTotalHT(data.totalHT || 0);
       setTotalTTC(data.totalTTC || 0);
       setTotalVAT((data.totalTTC || 0) - (data.totalHT || 0));
 
+      // Store client details for PDF
       setClientDetails(data.client || {});
 
       setClient({
         label: data.client?.name || "",
-        value: data.client?.id || "",
-        client: data.client || {},
+        value: data.client?.id,
+        client: data.client,
       });
 
+      // Map invoice items with VAT calculation
       setInvoiceItems(
         (data.items || []).map((item) => {
           const product =
             productsRes.payload?.find((p) => p.id === item.productId) || {};
           const itemHT = item.price * item.quantity;
           const itemVAT = item.vatRate ? itemHT * (item.vatRate / 100) : 0;
-          const vatRate = item.vatRate || (data.type === "QUOTATION" ? 0 : 0);
+          const vatRate = item.vatRate || (data.type === "QUOTATION" ? 0 : 19);
 
           return {
             productId: item.productId,
@@ -101,89 +102,14 @@ function SaleInvoiceDetails() {
     loadData();
   }, [dispatch, id]);
 
-  /* ================== HELPER FUNCTIONS ================== */
-  const formatNumber = (num) => {
-    if (isNaN(num)) return "0.000";
-    return num.toFixed(3).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    const [y, m, d] = dateStr.split("-");
-    return `${d}/${m}/${y}`;
-  };
-
-  const numberToFrench = (num) => {
-    if (num === 0) return "zéro";
-
-    const units = [
-      "",
-      "un",
-      "deux",
-      "trois",
-      "quatre",
-      "cinq",
-      "six",
-      "sept",
-      "huit",
-      "neuf",
-      "dix",
-      "onze",
-      "douze",
-      "treize",
-      "quatorze",
-      "quinze",
-      "seize",
-      "dix-sept",
-      "dix-huit",
-      "dix-neuf",
-    ];
-    const tens = [
-      "",
-      "",
-      "vingt",
-      "trente",
-      "quarante",
-      "cinquante",
-      "soixante",
-      "soixante-dix",
-      "quatre-vingt",
-      "quatre-vingt-dix",
-    ];
-
-    function translate(n) {
-      if (n < 20) return units[n];
-      if (n < 100) {
-        const u = n % 10;
-        const t = Math.floor(n / 10);
-        let s = tens[t];
-        if (u === 1 && t < 8) s += " et " + units[u];
-        else if (u > 0) s += "-" + units[u];
-        if (u === 0 && t === 8) s += "s";
-        return s;
-      }
-      if (n < 1000) {
-        const h = Math.floor(n / 100);
-        const r = n % 100;
-        let s = "";
-        if (h === 1) s = "cent";
-        else if (h > 1) s = units[h] + (r === 0 ? " cents" : " cent");
-        if (r > 0) s += (s ? " " : "") + translate(r);
-        return s;
-      }
-      if (n < 1000000) {
-        const th = Math.floor(n / 1000);
-        const r = n % 1000;
-        let s = th === 1 ? "mille" : translate(th) + " mille";
-        if (r > 0) s += " " + translate(r);
-        return s;
-      }
-      return "";
+  /* ================== NEW PDF EXPORT EXACT LIKE SAMPLE ================== */
+  const convertNumberToFrench = (num) => {
+    try {
+      return new Intl.NumberFormat("fr-FR").format(num);
+    } catch {
+      return num.toString();
     }
-
-    return translate(num);
   };
-
   const getTypeLabel = (type) => {
     const labels = {
       QUOTATION: "Devis",
@@ -194,7 +120,6 @@ function SaleInvoiceDetails() {
     return labels[type] || type;
   };
 
-  /* ================== NEW PDF EXPORT EXACT LIKE SAMPLE ================== */
   const exportPDF = () => {
     const doc = new jsPDF({
       orientation: "p",
@@ -203,10 +128,10 @@ function SaleInvoiceDetails() {
     });
 
     const pageWidth = 210;
-    const margin = 17; // Balanced margins
+    const margin = 20;
     const blue = [41, 128, 185];
-    const footerLineY = 260;
 
+    // Helper function to load image properly
     const addLogoToPDF = () => {
       return new Promise((resolve) => {
         const img = new Image();
@@ -214,7 +139,7 @@ function SaleInvoiceDetails() {
         img.src = logo;
         img.onload = () => {
           try {
-            doc.addImage(img, "PNG", margin, 8, 40, 12);
+            doc.addImage(img, "PNG", margin, 10, 35, 15);
           } catch (e) {
             console.warn("Could not add logo:", e);
           }
@@ -227,327 +152,237 @@ function SaleInvoiceDetails() {
       });
     };
 
-    const drawHeader = async (currentPage, totalPages) => {
+    const generatePDF = async () => {
       await addLogoToPDF();
 
-      doc.setFillColor(...blue);
-      doc.rect(0, 0, pageWidth, 5, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-
-      doc.setTextColor(...blue);
-      doc.setFontSize(10);
-      doc.text(companyInfo.name, pageWidth - margin, 12, { align: "right" });
-
-      doc.setFontSize(9);
-      doc.setTextColor(100);
-      doc.text(`MF: ${companyInfo.mf || ""}`, pageWidth - margin, 18, {
-        align: "right",
-      });
-
-      doc.setDrawColor(...blue);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(margin, 25, pageWidth - 2 * margin, 30, 5, 5, "D");
-
-      doc.setFontSize(16);
+      // Header
+      doc.setFontSize(20);
       doc.setTextColor(...blue);
       doc.setFont("helvetica", "bold");
-      /*  doc.text(getTypeLabel(type).toUpperCase(), margin + 5, 40); */
-      doc.text("Facture ", margin + 5, 40);
-      const clientX = pageWidth - margin - 100;
+      doc.text(getTypeLabel(type).toUpperCase(), pageWidth / 2, 25, {
+        align: "center",
+      });
+
+      // Invoice number and date
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.setFont("helvetica", "normal");
+      doc.text(`N°: ${invoiceNumber}`, margin, 40);
+      doc.text(`Date: ${date}`, margin, 45);
 
-      doc.text("Client :", clientX, 37);
-      doc.text("Téléphone :", clientX, 42);
-      doc.text("M.F :", clientX, 47);
-      doc.text("Adresse :", clientX, 52);
-
-      doc.text(clientDetails.name || "", clientX + 25, 37);
-      doc.text(clientDetails.phone || "", clientX + 25, 42);
-      doc.text(clientDetails.taxNumber || "", clientX + 25, 47);
-      doc.text(
-        `${clientDetails.address || ""} ${clientDetails.city || ""}`,
-        clientX + 25,
-        52,
-      );
+      // Seller Information
+      doc.setFontSize(11);
+      doc.setTextColor(...blue);
+      doc.setFont("helvetica", "bold");
+      doc.text("Vendeur", margin, 60);
 
       doc.setFontSize(9);
-      doc.setTextColor(100);
-      doc.text("Numéro", margin + 5, 62);
-      doc.text("Date", margin + 70, 62);
-      doc.text("Page", margin + 135, 62);
+      doc.setTextColor(80);
+      doc.setFont("helvetica", "normal");
+      doc.text(companyInfo.name, margin, 67);
+      doc.text(companyInfo.address, margin, 73);
+      doc.text(companyInfo.city, margin, 79);
+      doc.text(`Tél: ${companyInfo.phone}`, margin, 85);
+      doc.text(`Email: ${companyInfo.email}`, margin, 91);
+      doc.text(`SIRET: ${companyInfo.siret}`, margin, 97);
 
-      doc.setDrawColor(200, 200, 200);
-      doc.line(margin, 64, pageWidth - margin, 64);
+      // Client Information
+      const clientX = pageWidth - margin - 80;
 
-      doc.text(invoiceNumber, margin + 5, 70);
-      doc.text(formatDate(date), margin + 70, 70);
-      doc.text(`${currentPage}/${totalPages}`, margin + 135, 70);
-    };
+      doc.setFontSize(11);
+      doc.setTextColor(...blue);
+      doc.setFont("helvetica", "bold");
+      doc.text("Client", clientX, 60);
 
-    const drawFooter = (typeLabel) => {
+      // Client box
       doc.setDrawColor(...blue);
-      doc.line(margin, footerLineY, pageWidth - margin, footerLineY);
+      doc.setLineWidth(0.5);
+      doc.rect(clientX - 2, 62, 84, 45);
 
       doc.setFontSize(9);
-      doc.setTextColor(100);
-      /* doc.text(
-        `NB: Ce ${typeLabel} est valable 30 jour(s) a partir de la date de creation.`,
-        pageWidth / 2,
-        footerLineY + 7,
-        { align: "center" },
-      ); */
-
+      doc.setTextColor(80);
+      doc.setFont("helvetica", "normal");
+      doc.text(clientDetails?.name || "Nom du client", clientX, 70);
+      doc.text(clientDetails?.address || "Adresse", clientX, 76);
       doc.text(
-        `Addresse: ${companyInfo.address}`,
-        margin + 27,
-        footerLineY + 13,
-        {
-          align: "center",
-        },
+        `${clientDetails?.postalCode || ""} ${clientDetails?.city || "Ville"}`,
+        clientX,
+        82,
       );
-      doc.text(
-        `Tel: ${companyInfo.phone || "93252121"}`,
-        pageWidth / 2,
-        footerLineY + 13,
-        { align: "center" },
-      );
+      doc.text(`Tél: ${clientDetails?.phone || "Non renseigné"}`, clientX, 88);
+      doc.text(`Email: ${clientDetails?.email || ""}`, clientX, 94);
 
-      doc.text(
-        `email: ${companyInfo.email}`,
-        pageWidth - margin - 20,
-        footerLineY + 13,
-        {
-          align: "center",
-        },
-      );
-    };
-
-    const generatePDF = async () => {
-      const rowsPerPage = 15;
+      // Items Table
       const tableHeaders = [
-        { content: "Désignation", styles: { halign: "left" } },
-        { content: "Rem %", styles: { halign: "center" } },
-        { content: "Qte", styles: { halign: "center" } },
-        { content: "P.U HT", styles: { halign: "right" } },
-        { content: "TVA %", styles: { halign: "center" } },
-        { content: "P.HT", styles: { halign: "right" } },
-        { content: "P.TTC", styles: { halign: "right" } },
+        [
+          { content: "Désignation", styles: { halign: "left" } },
+          { content: "Qté", styles: { halign: "center" } },
+          { content: "P.U. HT (TND)", styles: { halign: "right" } },
+          { content: "TVA %", styles: { halign: "center" } },
+          { content: "Total HT (TND)", styles: { halign: "right" } },
+          { content: "Total TTC (TND)", styles: { halign: "right" } },
+        ],
       ];
 
       const tableBody = invoiceItems.map((item) => [
         { content: item.productName, styles: { halign: "left" } },
-        { content: "0.00", styles: { halign: "center" } },
-        { content: formatNumber(item.quantity), styles: { halign: "center" } },
-        { content: formatNumber(item.price), styles: { halign: "right" } },
-        { content: `${item.vatRate}`, styles: { halign: "center" } },
-        { content: formatNumber(item.totalHT), styles: { halign: "right" } },
-        { content: formatNumber(item.totalTTC), styles: { halign: "right" } },
-      ]);
-
-      const totalPages = Math.max(1, Math.ceil(tableBody.length / rowsPerPage));
-      let currentPage = 1;
-
-      await drawHeader(currentPage, totalPages);
-
-      let startY = 75;
-
-      for (let i = 0; i < tableBody.length; i += rowsPerPage) {
-        let chunk = tableBody.slice(i, i + rowsPerPage);
-
-        // Pad to full page height with empty rows
-        const fullChunk = [...chunk];
-        while (fullChunk.length < rowsPerPage) {
-          fullChunk.push(["", "", "", "", "", "", ""]);
-        }
-
-        autoTable(doc, {
-          head: [tableHeaders],
-          body: fullChunk,
-          startY: startY,
-          theme: "grid",
-          styles: {
-            fontSize: 9,
-            cellPadding: 2,
-            lineColor: [200, 200, 200],
-            lineWidth: 0.1,
-            textColor: 50,
-            overflow: "linebreak",
-          },
-          headStyles: {
-            fillColor: blue,
-            textColor: 255,
-            fontStyle: "bold",
-          },
-          bodyStyles: {
-            lineWidth: { top: 0, bottom: 0, left: 0.1, right: 0.1 }, // No horizontal lines between rows
-          },
-          margin: { left: margin, right: margin },
-          columnStyles: {
-            0: { cellWidth: 74 },
-            1: { cellWidth: 15 },
-            2: { cellWidth: 12 },
-            3: { cellWidth: 20 },
-            4: { cellWidth: 15 },
-            5: { cellWidth: 20 },
-            6: { cellWidth: 20 },
-          },
-        });
-
-        // Add closing bottom line on EVERY page
-        const tableBottomY = doc.lastAutoTable.finalY;
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.1);
-        doc.line(margin, tableBottomY, pageWidth - margin, tableBottomY);
-
-        if (i + rowsPerPage < tableBody.length) {
-          currentPage++;
-          doc.addPage();
-          await drawHeader(currentPage, totalPages);
-          startY = 75;
-        }
-      }
-
-      // Bottom sections only on last page
-      let blockStartY = doc.lastAutoTable.finalY + 10;
-      const preferredBlockStartY = 200;
-      if (blockStartY < preferredBlockStartY) {
-        blockStartY = preferredBlockStartY;
-      }
-
-      // VAT groups
-      const vatRates = [0, 7, 19];
-      const vatGroups = {};
-      invoiceItems.forEach((item) => {
-        const rate = item.vatRate;
-        if (!vatGroups[rate]) vatGroups[rate] = { base: 0, montant: 0 };
-        vatGroups[rate].base += item.totalHT;
-        vatGroups[rate].montant += item.vatAmount;
-      });
-
-      // Tax Table (left)
-      const taxHeaders = [
-        { content: "Taxe", styles: { halign: "left" } },
-        { content: "Base", styles: { halign: "right" } },
-        { content: "Montant", styles: { halign: "right" } },
-      ];
-      const taxBody = vatRates.map((rate) => [
-        { content: `${rate}%`, styles: { halign: "left" } },
-        {
-          content: formatNumber(vatGroups[rate]?.base || 0),
-          styles: { halign: "right" },
-        },
-        {
-          content: formatNumber(vatGroups[rate]?.montant || 0),
-          styles: { halign: "right" },
-        },
+        { content: item.quantity.toString(), styles: { halign: "center" } },
+        { content: item.price.toFixed(3), styles: { halign: "right" } },
+        { content: `${item.vatRate}%`, styles: { halign: "center" } },
+        { content: item.totalHT.toFixed(3), styles: { halign: "right" } },
+        { content: item.totalTTC.toFixed(3), styles: { halign: "right" } },
       ]);
 
       autoTable(doc, {
-        startY: blockStartY,
-        head: [taxHeaders],
-        body: taxBody,
+        startY: 115,
+        head: tableHeaders,
+        body: tableBody,
         theme: "grid",
         styles: {
-          fontSize: 8,
-          cellPadding: 2,
-          lineWidth: 0.1,
+          fontSize: 9,
+          cellPadding: 4,
           lineColor: [200, 200, 200],
+          lineWidth: 0.1,
+          textColor: 50,
         },
-        headStyles: { fillColor: blue, textColor: 255 },
-        margin: { left: margin, right: 0 },
+        headStyles: {
+          fillColor: blue,
+          textColor: 255,
+          fontStyle: "bold",
+          halign: "center",
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        margin: { left: margin, right: margin },
         columnStyles: {
-          0: { cellWidth: 10 },
+          0: { cellWidth: 70 },
           1: { cellWidth: 20 },
-          2: { cellWidth: 20 },
+          2: { cellWidth: 25 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 25 },
+          5: { cellWidth: 25 },
         },
       });
 
-      // Signatures (middle)
-      const middleX = margin + 55;
+      // Totals
+      const finalY = doc.lastAutoTable.finalY + 15;
+
+      // Totals box
       doc.setDrawColor(...blue);
-      doc.setLineWidth(0.5);
-      doc.rect(middleX, blockStartY, 35, 30);
+      doc.setFillColor(250, 250, 250);
+      doc.roundedRect(pageWidth - margin - 70, finalY, 70, 40, 3, 3, "FD");
+
       doc.setFontSize(9);
       doc.setTextColor(100);
-      doc.text("Signature Client", middleX + 17.5, blockStartY + 8, {
-        align: "center",
-      });
+      doc.setFont("helvetica", "normal");
+      doc.text("Total HT:", pageWidth - margin - 62, finalY + 10);
+      doc.text("TVA:", pageWidth - margin - 62, finalY + 20);
+      doc.text("Total TTC:", pageWidth - margin - 62, finalY + 30);
 
-      doc.rect(middleX + 40, blockStartY, 35, 30);
-      doc.text("Signature & Cachet", middleX + 57.5, blockStartY + 8, {
-        align: "center",
-      });
-
-      // Totals (right)
-      const rightX = middleX + 80;
-      doc.setFontSize(9);
-      doc.setTextColor(100);
-      doc.text("P.HT.T : ", rightX, blockStartY + 5);
-      doc.text("Timbre fiscal : ", rightX, blockStartY + 10);
-      doc.text("TVA : ", rightX, blockStartY + 15);
-      doc.text("TTC : ", rightX, blockStartY + 20);
-      doc.text("Net à payer : ", rightX, blockStartY + 25);
-
+      doc.setFontSize(10);
       doc.setTextColor(0);
-      const valueOffset = 40;
+      doc.setFont("helvetica", "bold");
       doc.text(
-        formatNumber(totalHT) + " DT",
-        rightX + valueOffset,
-        blockStartY + 5,
-        { align: "right" },
+        `${totalHT.toFixed(3)} TND`,
+        pageWidth - margin - 20,
+        finalY + 10,
+        {
+          align: "right",
+        },
       );
       doc.text(
-        formatNumber(1) + " DT",
-        rightX + valueOffset,
-        blockStartY + 10,
-        { align: "right" },
+        `${totalVAT.toFixed(3)} TND`,
+        pageWidth - margin - 20,
+        finalY + 20,
+        {
+          align: "right",
+        },
       );
-      doc.text(
-        formatNumber(totalVAT) + " DT",
-        rightX + valueOffset,
-        blockStartY + 15,
-        { align: "right" },
-      );
-      doc.text(
-        formatNumber(totalTTC) + " DT",
-        rightX + valueOffset,
-        blockStartY + 20,
-        { align: "right" },
-      );
-      doc.text(
-        formatNumber(totalTTC + 1) + " DT",
-        rightX + valueOffset,
-        blockStartY + 25,
-        { align: "right" },
-      );
-
-      // Amount in words (only on last page)
-      const wordsY = blockStartY + 45;
-      const integerPart = Math.floor(totalTTC);
-      const millimes = Math.round((totalTTC - integerPart) * 1000);
-      const millimesText = millimes === 0 ? "zéro" : numberToFrench(millimes);
-      const typeLabel = getTypeLabel(type).toLowerCase();
+      doc.setTextColor(...blue);
       doc.setFontSize(12);
-      doc.setTextColor(100);
       doc.text(
-        `Le présent facture a la somme de : ${numberToFrench(integerPart)} Dinars et ${millimesText} Millimes`,
-        margin,
-        wordsY,
+        `${totalTTC.toFixed(3)} TND`,
+        pageWidth - margin - 20,
+        finalY + 30,
+        {
+          align: "right",
+        },
       );
 
-      // Add footers to all pages
-      const pageCount = doc.internal.getNumberOfPages();
-      const typeLabelLower = getTypeLabel(type).toLowerCase();
-      for (let i = 1; i <= pageCount; i++) {
-        doc.setPage(i);
-        drawFooter(typeLabelLower);
+      // Payment Information
+      const paymentY = finalY + 50;
+
+      doc.setFontSize(10);
+      doc.setTextColor(...blue);
+      doc.setFont("helvetica", "bold");
+      doc.text("Informations de paiement", margin, paymentY);
+
+      doc.setFontSize(8);
+      doc.setTextColor(80);
+      doc.setFont("helvetica", "normal");
+
+      const dueDate = new Date(date);
+      dueDate.setDate(dueDate.getDate() + 30);
+
+      doc.text(`Mode de paiement: Virement bancaire`, margin, paymentY + 7);
+      doc.text(
+        `Date d'échéance: ${dueDate.toLocaleDateString("fr-FR")}`,
+        margin,
+        paymentY + 14,
+      );
+      doc.text(
+        `IBAN: FR76 1234 5678 9012 3456 7890 123`,
+        margin,
+        paymentY + 21,
+      );
+      doc.text(`BIC: ABCDEDFXXX`, margin, paymentY + 28);
+
+      // Notes for quotations
+      if (type === "QUOTATION") {
+        doc.setDrawColor(255, 193, 7);
+        doc.setFillColor(255, 243, 205);
+        doc.roundedRect(
+          margin,
+          paymentY + 35,
+          pageWidth - margin * 2,
+          20,
+          2,
+          2,
+          "FD",
+        );
 
         doc.setFontSize(8);
+        doc.setTextColor(133, 100, 4);
+        doc.text(
+          "Ce devis est valable 30 jours à compter de sa date d'émission. Les prix sont exprimés en euros hors taxes.",
+          margin + 5,
+          paymentY + 45,
+        );
+      }
+
+      // Footer
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text("Merci pour votre confiance.", pageWidth / 2, 285, {
+        align: "center",
+      });
+      doc.text(
+        `Document généré le ${new Date().toLocaleDateString("fr-FR")}`,
+        pageWidth / 2,
+        290,
+        {
+          align: "center",
+        },
+      );
+
+      // Page numbers
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
         doc.setTextColor(150);
-        doc.text(`Page ${i} / ${pageCount}`, pageWidth / 2, 290, {
+        doc.text(`Page ${i} / ${pageCount}`, pageWidth / 2, 295, {
           align: "center",
         });
       }

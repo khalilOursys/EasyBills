@@ -52,7 +52,7 @@ export class SaleInvoiceService {
     let totalHT = 0;
     let totalTTC = 0;
     const calculatedItems = items.map((item) => {
-      const vatRate = item.vatRate || 19; // Default VAT rate 19%
+      const vatRate = item.vatRate || 0; // Default VAT rate 19%
       const itemTotalHT = item.price * item.quantity;
       const itemVatAmount = itemTotalHT * (vatRate / 100);
       const itemTotalTTC = itemTotalHT + itemVatAmount;
@@ -292,7 +292,7 @@ export class SaleInvoiceService {
 
       // Calculate VAT for items
       const calculatedItems = items.map((item) => {
-        const vatRate = item.vatRate || 19;
+        const vatRate = item.vatRate || 0;
         const itemTotalHT = item.price * item.quantity;
         const vatAmount = itemTotalHT * (vatRate / 100);
 

@@ -14,7 +14,7 @@ function ListPurchaseInvoice() {
   const location = useLocation();
 
   // Get the last path segment
-  const lastPathSegment = location.pathname.split("/").pop();
+  const type = location.pathname.split("/").pop();
   const notify = (type, msg) => {
     if (type === 1)
       toast.success(
@@ -132,9 +132,7 @@ function ListPurchaseInvoice() {
 
   const fetchInvoices = async () => {
     try {
-      const response = await dispatch(
-        fetchPurchaseInvoices({ type: lastPathSegment }),
-      );
+      const response = await dispatch(fetchPurchaseInvoices({ type: type }));
       if (response.payload) {
         setInvoices(response.payload);
       }
