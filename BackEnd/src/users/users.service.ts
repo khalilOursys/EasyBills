@@ -8,11 +8,34 @@ import { PrismaService } from '../prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcryptjs';
 import { UpdateUserDto } from './dto/UpdateUserDto';
+import { UserRole } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
   constructor(private readonly prisma: PrismaService) {}
+  async onModuleInit() {
+    await this.ensureAdminUserExists();
+  }
 
+  private async ensureAdminUserExists() {
+    const adminEmail = 'admin.admin@admin.com';
+    const adminPassword = 'adminadmin';
+
+    const usersCount = await this.prisma.user.count();
+
+    if (usersCount === 0) {
+      const adminUserDto: CreateUserDto = {
+        email: adminEmail,
+        password: adminPassword,
+        firstName: 'Admin',
+        lastName: 'Admin',
+        role: UserRole.ADMIN,
+        telephone: '',
+      };
+
+      await this.create(adminUserDto);
+    }
+  }
   async create(createUserDto: CreateUserDto) {
     // Check if user with same email exists
     const existing = await this.prisma.user.findUnique({

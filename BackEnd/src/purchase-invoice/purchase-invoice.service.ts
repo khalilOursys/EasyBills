@@ -8,8 +8,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreatePurchaseInvoiceDto } from './dto/create-purchase-invoice.dto';
 import { UpdatePurchaseInvoiceDto } from './dto/update-purchase-invoice.dto';
 import { FilterPurchaseInvoiceDto } from './dto/filter-purchase-invoice.dto';
-import { InvoiceStatus, PurchaseInvoiceType } from '@prisma/client';
+import { InvoiceStatus, Prisma, PurchaseInvoiceType } from '@prisma/client';
 import { UpdateStatusDto } from './dto/update-status.dto';
+
+type PaymentStatus = 'PAID' | 'PARTIAL' | 'UNPAID';
 
 @Injectable()
 export class PurchaseInvoiceService {
@@ -36,15 +38,58 @@ export class PurchaseInvoiceService {
       throw new BadRequestException('Invoice number already exists');
     }
 
-    // Check if all products exist
+    // Validate items and check if entities exist
     for (const item of items) {
-      const product = await this.prisma.product.findUnique({
-        where: { id: item.productId },
-      });
+      const hasId = item.productId || item.rawMaterialId || item.serviceId;
+      if (!hasId) {
+        throw new BadRequestException(
+          'Each item must have either productId, rawMaterialId, or serviceId',
+        );
+      }
 
-      if (!product) {
-        throw new NotFoundException(
-          `Product with ID ${item.productId} not found`,
+      if (item.productId) {
+        const product = await this.prisma.product.findUnique({
+          where: { id: item.productId },
+        });
+        if (!product) {
+          throw new NotFoundException(
+            `Product with ID ${item.productId} not found`,
+          );
+        }
+      }
+
+      if (item.rawMaterialId) {
+        const rawMaterial = await this.prisma.rawMaterial.findUnique({
+          where: { id: item.rawMaterialId },
+        });
+        if (!rawMaterial) {
+          throw new NotFoundException(
+            `Raw material with ID ${item.rawMaterialId} not found`,
+          );
+        }
+      }
+
+      if (item.serviceId) {
+        const service = await this.prisma.service.findUnique({
+          where: { id: item.serviceId },
+        });
+        if (!service) {
+          throw new NotFoundException(
+            `Service with ID ${item.serviceId} not found`,
+          );
+        }
+      }
+
+      // Validate based on invoice type
+      if (invoiceData.type === 'RAW_MATERIAL_PURCHASE' && !item.rawMaterialId) {
+        throw new BadRequestException(
+          'Raw material purchases must only contain rawMaterialId',
+        );
+      }
+
+      if (invoiceData.type === 'PRODUCT_PURCHASE' && item.rawMaterialId) {
+        throw new BadRequestException(
+          'Product purchases cannot contain rawMaterialId',
         );
       }
     }
@@ -70,11 +115,13 @@ export class PurchaseInvoiceService {
           totalHT,
           totalTTC,
           supplierId,
-          type: invoiceData.type ?? PurchaseInvoiceType.PURCHASE_INVOICE, // FIX
-          status: invoiceData.status ?? InvoiceStatus.DRAFT, // FIX
+          type: invoiceData.type ?? PurchaseInvoiceType.PURCHASE_INVOICE,
+          status: invoiceData.status ?? InvoiceStatus.DRAFT,
           items: {
             create: items.map((item) => ({
-              productId: item.productId,
+              productId: item.productId || null,
+              rawMaterialId: item.rawMaterialId || null,
+              serviceId: item.serviceId || null,
               quantity: item.quantity,
               price: item.price,
             })),
@@ -85,21 +132,37 @@ export class PurchaseInvoiceService {
           items: {
             include: {
               product: true,
+              rawMaterial: true,
+              service: true,
             },
           },
         },
       });
 
-      // Update product stock (if your products have stock management)
+      // Update stock for products only (not raw materials or services)
       for (const item of items) {
-        await prisma.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: {
-              increment: item.quantity,
+        if (item.productId) {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: {
+              stock: {
+                increment: item.quantity,
+              },
             },
-          },
-        });
+          });
+        }
+
+        // Optionally update raw material stock
+        if (item.rawMaterialId) {
+          await prisma.rawMaterial.update({
+            where: { id: item.rawMaterialId },
+            data: {
+              amount: {
+                increment: item.quantity,
+              },
+            },
+          });
+        }
       }
 
       return invoice;
@@ -135,12 +198,30 @@ export class PurchaseInvoiceService {
         };
       }
 
-      if (filterDto.supplierName) {
+      if (filterDto.supplierName && filterDto.supplierId) {
+        where.supplier = {
+          AND: [
+            {
+              name: {
+                contains: filterDto.supplierName,
+                mode: 'insensitive',
+              },
+            },
+            {
+              id: filterDto.supplierId,
+            },
+          ],
+        };
+      } else if (filterDto.supplierName) {
         where.supplier = {
           name: {
             contains: filterDto.supplierName,
             mode: 'insensitive',
           },
+        };
+      } else if (filterDto.supplierId) {
+        where.supplier = {
+          id: filterDto.supplierId,
         };
       }
     }
@@ -153,6 +234,8 @@ export class PurchaseInvoiceService {
         items: {
           include: {
             product: true,
+            rawMaterial: true,
+            service: true,
           },
         },
       },
@@ -170,8 +253,11 @@ export class PurchaseInvoiceService {
         items: {
           include: {
             product: true,
+            rawMaterial: true,
+            service: true,
           },
         },
+        payments: true,
       },
     });
 
@@ -190,6 +276,8 @@ export class PurchaseInvoiceService {
         items: {
           include: {
             product: true,
+            rawMaterial: true,
+            service: true,
           },
         },
       },
@@ -220,6 +308,8 @@ export class PurchaseInvoiceService {
         items: {
           include: {
             product: true,
+            rawMaterial: true,
+            service: true,
           },
         },
       },
@@ -265,16 +355,44 @@ export class PurchaseInvoiceService {
     // Handle items update
     let itemsUpdate: any = undefined;
     if (items) {
-      // Check if all products exist
+      // Validate items
       for (const item of items) {
+        const hasId = item.productId || item.rawMaterialId || item.serviceId;
+        if (!hasId) {
+          throw new BadRequestException(
+            'Each item must have either productId, rawMaterialId, or serviceId',
+          );
+        }
+
         if (item.productId) {
           const product = await this.prisma.product.findUnique({
             where: { id: item.productId },
           });
-
           if (!product) {
             throw new NotFoundException(
               `Product with ID ${item.productId} not found`,
+            );
+          }
+        }
+
+        if (item.rawMaterialId) {
+          const rawMaterial = await this.prisma.rawMaterial.findUnique({
+            where: { id: item.rawMaterialId },
+          });
+          if (!rawMaterial) {
+            throw new NotFoundException(
+              `Raw material with ID ${item.rawMaterialId} not found`,
+            );
+          }
+        }
+
+        if (item.serviceId) {
+          const service = await this.prisma.service.findUnique({
+            where: { id: item.serviceId },
+          });
+          if (!service) {
+            throw new NotFoundException(
+              `Service with ID ${item.serviceId} not found`,
             );
           }
         }
@@ -284,7 +402,9 @@ export class PurchaseInvoiceService {
       itemsUpdate = {
         deleteMany: {},
         create: items.map((item) => ({
-          productId: item.productId,
+          productId: item.productId || null,
+          rawMaterialId: item.rawMaterialId || null,
+          serviceId: item.serviceId || null,
           quantity: item.quantity,
           price: item.price,
         })),
@@ -316,6 +436,8 @@ export class PurchaseInvoiceService {
         items: {
           include: {
             product: true,
+            rawMaterial: true,
+            service: true,
           },
         },
       },
@@ -335,6 +457,8 @@ export class PurchaseInvoiceService {
         items: {
           include: {
             product: true,
+            rawMaterial: true,
+            service: true,
           },
         },
       },
@@ -368,6 +492,8 @@ export class PurchaseInvoiceService {
         items: {
           include: {
             product: true,
+            rawMaterial: true,
+            service: true,
           },
         },
       },
@@ -386,6 +512,14 @@ export class PurchaseInvoiceService {
     });
     const paidInvoices = await this.prisma.purchaseInvoice.count({
       where: { status: 'PAID' },
+    });
+
+    // Get type breakdown
+    const typeBreakdown = await this.prisma.purchaseInvoice.groupBy({
+      by: ['type'],
+      _count: {
+        id: true,
+      },
     });
 
     const monthlyStats = await this.prisma.purchaseInvoice.groupBy({
@@ -412,7 +546,405 @@ export class PurchaseInvoiceService {
       totalAmount: totalAmount._sum.totalTTC || 0,
       draftInvoices,
       paidInvoices,
+      typeBreakdown,
       monthlyStats,
     };
+  }
+
+  // ==================== PAYMENT CALCULATION METHODS ====================
+
+  /**
+   * Calculate payments for a single purchase invoice
+   */
+  async calculateInvoicePayments(invoiceId: number) {
+    const invoice = await this.prisma.purchaseInvoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        payments: true,
+        items: {
+          include: {
+            product: true,
+            rawMaterial: true,
+            service: true,
+          },
+        },
+        supplier: true,
+      },
+    });
+
+    if (!invoice) {
+      throw new NotFoundException(
+        `Purchase invoice with ID ${invoiceId} not found`,
+      );
+    }
+
+    const totalPaid = invoice.payments.reduce(
+      (sum, payment) => sum + payment.amount,
+      0,
+    );
+    const totalInvoiceAmount = invoice.totalTTC || invoice.totalHT || 0;
+    const remainingAmount = totalInvoiceAmount - totalPaid;
+    const paidPercentage =
+      totalInvoiceAmount > 0 ? (totalPaid / totalInvoiceAmount) * 100 : 0;
+    const paymentStatus = this.getPaymentStatus(totalPaid, totalInvoiceAmount);
+
+    return {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      totalInvoiceAmount,
+      totalPaid,
+      remainingAmount,
+      paidPercentage: Math.round(paidPercentage * 100) / 100,
+      paymentStatus,
+      statusLabel: this.getPaymentStatusLabel(paymentStatus),
+      progressWidth: Math.min(paidPercentage, 100),
+      paymentCount: invoice.payments.length,
+      payments: invoice.payments.map((p) => ({
+        id: p.id,
+        amount: p.amount,
+        method: p.method,
+        createdAt: p.createdAt,
+      })),
+      supplier: invoice.supplier,
+      items: invoice.items.map((item) => ({
+        id: item.id,
+        type: item.productId
+          ? 'product'
+          : item.rawMaterialId
+            ? 'rawMaterial'
+            : 'service',
+        name:
+          item.product?.name || item.rawMaterial?.name || item.service?.name,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.quantity * item.price,
+      })),
+    };
+  }
+
+  /**
+   * Get all purchase invoices for a supplier with payment calculations
+   */
+  async getSupplierInvoicesWithPayments(supplierId: number) {
+    const supplier = await this.prisma.supplier.findUnique({
+      where: { id: supplierId },
+    });
+
+    if (!supplier) {
+      throw new NotFoundException(`Supplier with ID ${supplierId} not found`);
+    }
+
+    const invoices = await this.prisma.purchaseInvoice.findMany({
+      where: { supplierId },
+      include: {
+        payments: true,
+        items: {
+          include: {
+            product: true,
+            rawMaterial: true,
+            service: true,
+          },
+        },
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
+
+    // Transform to simplified format
+    const simplifiedInvoices = invoices.map((invoice) => {
+      const totalPaid = invoice.payments.reduce(
+        (sum, payment) => sum + payment.amount,
+        0,
+      );
+      const totalAmount = invoice.totalTTC || invoice.totalHT || 0;
+      const remainingAmount = totalAmount - totalPaid;
+      const paidPercentage =
+        totalAmount > 0 ? (totalPaid / totalAmount) * 100 : 0;
+      const status = this.getPaymentStatus(totalPaid, totalAmount);
+
+      return {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        date: invoice.date,
+        type: invoice.type,
+        status: invoice.status,
+        totalHT: invoice.totalHT,
+        totalTTC: invoice.totalTTC,
+        totalPaid: Math.round(totalPaid * 100) / 100,
+        remainingAmount: Math.round(remainingAmount * 100) / 100,
+        paidPercentage: Math.round(paidPercentage * 100) / 100,
+        paymentStatus: status,
+        statusLabel: this.getPaymentStatusLabel(status),
+        paymentCount: invoice.payments.length,
+        payments: invoice.payments.map((p) => ({
+          id: p.id,
+          amount: p.amount,
+          method: p.method,
+          createdAt: p.createdAt,
+        })),
+        items: invoice.items.map((item) => ({
+          id: item.id,
+          type: item.productId
+            ? 'product'
+            : item.rawMaterialId
+              ? 'rawMaterial'
+              : 'service',
+          name:
+            item.product?.name || item.rawMaterial?.name || item.service?.name,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.quantity * item.price,
+        })),
+      };
+    });
+
+    return simplifiedInvoices;
+  }
+
+  /**
+   * Get payment summary for all purchase invoices
+   */
+  async getAllPurchaseInvoicesPaymentSummary() {
+    const invoices = await this.prisma.purchaseInvoice.findMany({
+      include: {
+        payments: true,
+        supplier: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+      orderBy: {
+        date: 'desc',
+      },
+    });
+
+    return invoices.map((invoice) => {
+      const totalPaid = invoice.payments.reduce(
+        (sum, payment) => sum + payment.amount,
+        0,
+      );
+      const totalAmount = invoice.totalTTC || invoice.totalHT || 0;
+      const remainingAmount = totalAmount - totalPaid;
+      const paidPercentage =
+        totalAmount > 0 ? (totalPaid / totalAmount) * 100 : 0;
+      const status = this.getPaymentStatus(totalPaid, totalAmount);
+
+      return {
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        date: invoice.date,
+        type: invoice.type,
+        status: invoice.status,
+        supplier: invoice.supplier,
+        totalAmount,
+        totalPaid,
+        remainingAmount,
+        paidPercentage: Math.round(paidPercentage * 100) / 100,
+        paymentStatus: status,
+        statusLabel: this.getPaymentStatusLabel(status),
+        progressWidth: Math.min(paidPercentage, 100),
+        paymentCount: invoice.payments.length,
+        formattedTotal: `${totalAmount.toFixed(2)} TND`,
+        formattedPaid: `${totalPaid.toFixed(2)} TND`,
+        formattedRemaining: `${remainingAmount.toFixed(2)} TND`,
+      };
+    });
+  }
+
+  /**
+   * Get supplier balance (total amount - total paid)
+   */
+  async getSupplierBalance(supplierId: number) {
+    const supplier = await this.prisma.supplier.findUnique({
+      where: { id: supplierId },
+    });
+
+    if (!supplier) {
+      throw new NotFoundException(`Supplier with ID ${supplierId} not found`);
+    }
+
+    const invoices = await this.prisma.purchaseInvoice.findMany({
+      where: { supplierId },
+      include: {
+        payments: true,
+      },
+    });
+
+    let totalAmount = 0;
+    let totalPaid = 0;
+
+    invoices.forEach((invoice) => {
+      const invoiceTotal = invoice.totalTTC || invoice.totalHT || 0;
+      const invoicePaid = invoice.payments.reduce(
+        (sum, p) => sum + p.amount,
+        0,
+      );
+
+      totalAmount += invoiceTotal;
+      totalPaid += invoicePaid;
+    });
+
+    const balance = totalAmount - totalPaid;
+
+    return {
+      supplier: {
+        id: supplier.id,
+        name: supplier.name,
+        code: supplier.code,
+        phone: supplier.phone,
+        email: supplier.email,
+        taxNumber: supplier.taxNumber,
+      },
+      summary: {
+        totalInvoices: invoices.length,
+        totalAmount,
+        totalPaid,
+        balance,
+        balanceStatus: balance > 0 ? 'DEBIT' : balance < 0 ? 'CREDIT' : 'ZERO',
+        formattedBalance: `${Math.abs(balance).toFixed(2)} TND ${balance > 0 ? '(Debit)' : balance < 0 ? '(Credit)' : ''}`,
+      },
+      invoices: invoices.map((invoice) => ({
+        id: invoice.id,
+        invoiceNumber: invoice.invoiceNumber,
+        date: invoice.date,
+        total: invoice.totalTTC || invoice.totalHT || 0,
+        paid: invoice.payments.reduce((sum, p) => sum + p.amount, 0),
+        remaining:
+          (invoice.totalTTC || invoice.totalHT || 0) -
+          invoice.payments.reduce((sum, p) => sum + p.amount, 0),
+        status: invoice.status,
+        paymentCount: invoice.payments.length,
+      })),
+    };
+  }
+
+  /**
+   * Get overdue purchase invoices (older than 30 days and not fully paid)
+   */
+  async getOverduePurchaseInvoices(supplierId?: number) {
+    const where: Prisma.PurchaseInvoiceWhereInput = {
+      status: {
+        in: [InvoiceStatus.VALIDATED, InvoiceStatus.DRAFT],
+      },
+    };
+
+    if (supplierId) {
+      where.supplierId = supplierId;
+    }
+
+    const invoices = await this.prisma.purchaseInvoice.findMany({
+      where,
+      include: {
+        payments: true,
+        supplier: true,
+      },
+      orderBy: {
+        date: 'asc',
+      },
+    });
+
+    const overdueInvoices = invoices
+      .map((invoice) => {
+        const totalPaid = invoice.payments.reduce(
+          (sum, payment) => sum + payment.amount,
+          0,
+        );
+        const totalAmount = invoice.totalTTC || invoice.totalHT || 0;
+        const remainingAmount = totalAmount - totalPaid;
+        const status = this.getPaymentStatus(totalPaid, totalAmount);
+
+        const daysOverdue = this.calculateDaysOverdue(invoice.date);
+
+        return {
+          ...invoice,
+          remainingAmount,
+          paymentStatus: status,
+          statusLabel: this.getPaymentStatusLabel(status),
+          daysOverdue,
+          isOverdue: daysOverdue > 30 && status !== 'PAID',
+          formattedRemaining: `${remainingAmount.toFixed(2)} TND`,
+        };
+      })
+      .filter(
+        (inv) =>
+          (inv.paymentStatus === 'PARTIAL' || inv.paymentStatus === 'UNPAID') &&
+          inv.isOverdue,
+      );
+
+    return {
+      totalOverdue: overdueInvoices.length,
+      totalOverdueAmount: overdueInvoices.reduce(
+        (sum, inv) => sum + inv.remainingAmount,
+        0,
+      ),
+      invoices: overdueInvoices,
+    };
+  }
+
+  /**
+   * Bulk update payment status for multiple invoices
+   */
+  async updateBulkPaymentStatus(invoiceIds: number[]) {
+    const results = [];
+
+    for (const id of invoiceIds) {
+      const paymentData = await this.calculateInvoicePayments(id);
+      const status = paymentData.paymentStatus;
+
+      let invoiceStatus: InvoiceStatus = InvoiceStatus.VALIDATED;
+      if (status === 'PAID') {
+        invoiceStatus = InvoiceStatus.PAID;
+      }
+
+      const updated = await this.prisma.purchaseInvoice.update({
+        where: { id },
+        data: { status: invoiceStatus },
+      });
+
+      results.push({
+        invoiceId: id,
+        invoiceNumber: updated.invoiceNumber,
+        oldStatus: updated.status,
+        newStatus: invoiceStatus,
+        paymentStatus: status,
+      });
+    }
+
+    return {
+      processed: results.length,
+      results,
+    };
+  }
+
+  // ==================== HELPER METHODS ====================
+
+  private getPaymentStatus(
+    totalPaid: number,
+    totalAmount: number,
+  ): PaymentStatus {
+    if (totalAmount === 0) return 'PAID';
+    if (totalPaid >= totalAmount) return 'PAID';
+    if (totalPaid > 0) return 'PARTIAL';
+    return 'UNPAID';
+  }
+
+  private getPaymentStatusLabel(status: PaymentStatus): string {
+    const labels = {
+      PAID: '✅ Paid',
+      PARTIAL: '⏳ Partial Payment',
+      UNPAID: '❌ Unpaid',
+    };
+    return labels[status] || status;
+  }
+
+  private calculateDaysOverdue(date: Date): number {
+    const today = new Date();
+    const invoiceDate = new Date(date);
+    const diffTime = today.getTime() - invoiceDate.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
   }
 }

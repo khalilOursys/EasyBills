@@ -1,3 +1,5 @@
+// src/sale-invoice/dto/create-sale-invoice.dto.ts
+
 import {
   IsArray,
   IsEnum,
@@ -8,6 +10,11 @@ import {
   IsString,
   Min,
   ValidateNested,
+  IsDateString,
+  IsPositive,
+  Max,
+  ArrayMinSize,
+  IsObject,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { SaleInvoiceType, InvoiceStatus } from '@prisma/client';
@@ -18,15 +25,16 @@ export class CreateSaleInvoiceItemDto {
   productId: number;
 
   @IsInt()
-  @Min(1)
   quantity: number;
 
   @IsNumber()
   @Min(0)
+  @IsPositive()
   price: number;
 
   @IsNumber()
   @Min(0)
+  @Max(100)
   @IsOptional()
   vatRate?: number;
 
@@ -34,6 +42,10 @@ export class CreateSaleInvoiceItemDto {
   @Min(0)
   @IsOptional()
   vatAmount?: number;
+
+  @IsInt()
+  @IsOptional()
+  shippingNoteItemId?: number;
 }
 
 export class CreateSaleInvoiceDto {
@@ -41,9 +53,17 @@ export class CreateSaleInvoiceDto {
   @IsNotEmpty()
   invoiceNumber: string;
 
-  @IsString()
+  @IsDateString()
   @IsNotEmpty()
-  date: string | Date;
+  date: string;
+
+  @IsDateString()
+  @IsOptional()
+  startDate?: string;
+
+  @IsDateString()
+  @IsOptional()
+  endDate?: string;
 
   @IsEnum(SaleInvoiceType)
   @IsOptional()
@@ -54,12 +74,41 @@ export class CreateSaleInvoiceDto {
   status?: InvoiceStatus;
 
   @IsInt()
-  @IsNotEmpty()
-  clientId: number;
+  @IsOptional()
+  clientId?: number;
+
+  @IsInt()
+  @IsOptional()
+  driverId?: number;
+
+  @IsInt()
+  @IsOptional()
+  shippingNoteId?: number;
+
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  deliveryNoteIds?: number[];
+
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  cityIds?: number[];
+
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  serviceIds?: number[];
+
+  // NEW: Service amounts mapping (serviceId -> amount)
+  @IsObject()
+  @IsOptional()
+  serviceAmounts?: Record<number, number>;
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateSaleInvoiceItemDto)
+  @IsNotEmpty()
   items: CreateSaleInvoiceItemDto[];
 
   @IsNumber()

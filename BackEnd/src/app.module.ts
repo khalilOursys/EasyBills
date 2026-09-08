@@ -12,6 +12,19 @@ import { SaleInvoiceModule } from './sale-invoice/sale-invoice.module';
 import { PaymentsModule } from './payments/payments.module';
 import { CompanySettingsModule } from './company-settings/company-settings.module';
 import { RefundInvoiceModule } from './refund-invoice/refund-invoice.module';
+import { CarsModule } from './cars/cars.module';
+import { DriverModule } from './driver/driver.module';
+import { BrandsModule } from './brands/brands.module';
+import { CitiesModule } from './cities/cities.module';
+import { HeroBannerModule } from './hero-banner/hero-banner.module';
+import { OrderModule } from './order/order.module';
+import { InventoryModule } from './inventory/inventory.module';
+import { RawMaterialModule } from './raw-material/raw-material.module';
+import { ServiceModule } from './service/service.module';
+import { ExpenseModule } from './expense/expense.module';
+import { ProductionOrderModule } from './production-order/production-order.module';
+import { UnitModule } from './unit/unit.module';
+import { FinancialModule } from './financial/financial.module';
 
 @Module({
   imports: [
@@ -26,6 +39,20 @@ import { RefundInvoiceModule } from './refund-invoice/refund-invoice.module';
     PaymentsModule,
     CompanySettingsModule,
     RefundInvoiceModule,
+    CarsModule,
+    DriverModule,
+    BrandsModule,
+    CitiesModule,
+    HeroBannerModule,
+    OrderModule,
+    InventoryModule,
+    DriverModule,
+    RawMaterialModule,
+    ServiceModule,
+    ExpenseModule,
+    ProductionOrderModule,
+    UnitModule,
+    FinancialModule,
   ],
   controllers: [AppController],
   providers: [PrismaService],

@@ -1,5 +1,13 @@
-import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+import {
+  IsDateString,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsInt,
+  IsBoolean,
+} from 'class-validator';
 import { InvoiceStatus, SaleInvoiceType } from '@prisma/client';
+import { Type } from 'class-transformer';
 
 export class FilterSaleInvoiceDto {
   @IsDateString()
@@ -22,7 +30,38 @@ export class FilterSaleInvoiceDto {
   @IsOptional()
   clientName?: string;
 
+  @IsInt()
+  @Type(() => Number)
+  @IsOptional()
+  clientId?: number;
+
   @IsString()
   @IsOptional()
   invoiceNumber?: string;
+
+  @IsInt()
+  @Type(() => Number)
+  @IsOptional()
+  driverId?: number;
+
+  @IsString()
+  @IsOptional()
+  driverCIN?: string; // Add driver CIN filter
+
+  @IsBoolean()
+  @Type(() => Boolean)
+  @IsOptional()
+  hasDriver?: boolean;
+
+  @IsDateString()
+  @IsOptional()
+  dateFrom?: string;
+
+  @IsDateString()
+  @IsOptional()
+  dateTo?: string;
+
+  @IsInt()
+  @IsOptional()
+  shippingNoteId?: number;
 }
