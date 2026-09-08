@@ -9,6 +9,47 @@ import PageBreadcrumb from "@/components/common/PageBreadCrumb";
 import * as Toast from "@radix-ui/react-toast";
 import { useInvoiceData, notify } from "@/hooks/useInvoiceData";
 
+// Type definitions
+interface Product {
+    id: number;
+    name: string;
+    price?: number;
+    salePrice?: number;
+    vat?: number;
+}
+
+interface Driver {
+    id: number;
+    firstName: string;
+    lastName: string;
+    phone?: string;
+    plateNumber?: string;
+    carModel?: string;
+    carBrand?: string;
+    car?: {
+        brand?: string;
+        model?: string;
+        registration?: string;
+        plateNumber?: string;
+    };
+}
+
+interface City {
+    id: number;
+    name: string;
+}
+
+interface InvoiceItem {
+    productId: number | string;
+    quantity: number;
+    price: number;
+    vatRate: number;
+    vatAmount: number;
+    totalHT: number;
+    totalTTC: number;
+    total?: number;
+}
+
 const addSaleInvoice = async (data: any) => {
     console.log(data);
 
@@ -82,12 +123,12 @@ export default function AddShippingNoteInvoicePage() {
     });
 
     const handleItemChange = (index: number, field: string, value: any) => {
-        const newItems = invoiceItems.map((item: any, i: number) => {
+        const newItems = invoiceItems.map((item: InvoiceItem, i: number) => {
             if (i === index) {
                 let updatedItem = { ...item, [field]: value };
 
                 if (field === "productId") {
-                    const selectedProduct = products.find((p: any) => p.id === value);
+                    const selectedProduct = products.find((p: Product) => p.id === value);
                     if (selectedProduct) {
                         updatedItem.price = selectedProduct.salePrice || selectedProduct.price || 0;
                         updatedItem.vatRate = selectedProduct.vat || 0;
@@ -126,7 +167,7 @@ export default function AddShippingNoteInvoicePage() {
     };
 
     const handleRemoveItem = (index: number) => {
-        const newItems = invoiceItems.filter((_: any, i: number) => i !== index);
+        const newItems = invoiceItems.filter((_: InvoiceItem, i: number) => i !== index);
         setInvoiceItems(newItems);
     };
 
@@ -175,7 +216,7 @@ export default function AddShippingNoteInvoicePage() {
             }
         }
 
-        const items = invoiceItems.map((item: any) => ({
+        const items = invoiceItems.map((item: InvoiceItem) => ({
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,
@@ -209,7 +250,7 @@ export default function AddShippingNoteInvoicePage() {
 
     const getSelectedProductOption = (productId: any) => {
         if (!productId) return null;
-        const product = products.find((p: any) => p.id === productId);
+        const product = products.find((p: Product) => p.id === productId);
         return product
             ? {
                 value: product.id,
@@ -307,7 +348,7 @@ export default function AddShippingNoteInvoicePage() {
                                         instanceId="driver-select"
                                         placeholder="Sélectionner un chauffeur"
                                         value={driver}
-                                        options={drivers.map((driver: any) => ({
+                                        options={drivers.map((driver: Driver) => ({
                                             label: `${driver.firstName} ${driver.lastName} ${driver.phone ? `(${driver.phone})` : ""}`,
                                             value: driver.id,
                                             driver: driver,
@@ -355,7 +396,7 @@ export default function AddShippingNoteInvoicePage() {
                                         instanceId="cities-select"
                                         placeholder="Sélectionner une ou plusieurs villes"
                                         value={selectedCities}
-                                        options={cities.map((city: any) => ({
+                                        options={cities.map((city: City) => ({
                                             value: city.id,
                                             label: city.name,
                                         }))}
@@ -420,7 +461,7 @@ export default function AddShippingNoteInvoicePage() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {invoiceItems.map((item, index) => (
+                                            {invoiceItems.map((item: InvoiceItem, index: number) => (
                                                 <tr key={index} className="border-b">
                                                     <td className="p-4">
                                                         <select
@@ -429,7 +470,7 @@ export default function AddShippingNoteInvoicePage() {
                                                             className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent px-3 py-2 outline-none transition focus:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white"
                                                         >
                                                             <option value={0}>Sélectionner un produit</option>
-                                                            {products.map((product) => (
+                                                            {products.map((product: Product) => (
                                                                 <option key={product.id} value={product.id}>
                                                                     {product.name}
                                                                 </option>
@@ -517,14 +558,17 @@ export default function AddShippingNoteInvoicePage() {
                                 <button
                                     type="button"
                                     onClick={() => router.push("/sale-invoice/list/SHIPPING_NOTE_INVOICE")}
-                                    className="rounded-md border border-stroke px-6 py-3 font-medium hover:bg-gray-100"
+                                    className="rounded-md border border-stroke px-6 py-3 font-medium hover:bg-gray-100 transition-colors"
                                 >
                                     Annuler
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={addMutation.isPending}
-                                    className="rounded-md border border-stroke px-6 py-3 font-medium hover:bg-gray-100"
+                                    className={`rounded-md px-6 py-3 font-medium text-white transition-colors ${addMutation.isPending
+                                        ? "bg-gray-400 cursor-not-allowed"
+                                        : "bg-primary hover:bg-primary-dark"
+                                        }`}
                                 >
                                     {addMutation.isPending ? "Enregistrement..." : "Enregistrer"}
                                 </button>

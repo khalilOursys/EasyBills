@@ -34,6 +34,6 @@ async function bootstrap() {
   // Serve static files (e.g., images)
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
-  await app.listen(3001);
+  await app.listen(3005);
 }
 bootstrap();

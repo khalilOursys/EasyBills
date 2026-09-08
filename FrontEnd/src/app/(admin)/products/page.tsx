@@ -6,8 +6,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Toast from "@radix-ui/react-toast";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useRouter } from "next/navigation";
-import { Pencil, Trash2, Package, ClipboardList } from "lucide-react";
-import ProductionOrderDialog from "@/components/ProductionOrderDialog";
+import { Pencil, Trash2 } from "lucide-react";
 
 type Product = {
   id: number;
@@ -48,13 +47,6 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  // Production Order Dialog State
-  const [prodOrderDialogOpen, setProdOrderDialogOpen] = useState(false);
-  const [selectedProductForOrder, setSelectedProductForOrder] = useState<{
-    id: number;
-    name: string;
-  } | null>(null);
-
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setToastOpen(true);
@@ -83,25 +75,13 @@ export default function ProductsPage() {
     setDialogOpen(true);
   };
 
-  const handleViewCraftProducts = (product: Product) => {
-    router.push(`/craft-products/list/${product.id}`);
-  };
-
-  const handleCreateProductionOrder = (product: Product) => {
-    setSelectedProductForOrder({
-      id: product.id,
-      name: product.name,
-    });
-    setProdOrderDialogOpen(true);
-  };
-
   const confirmDelete = async () => {
     if (!selectedProduct) return;
 
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}products/${selectedProduct.id}`,
-        { method: "DELETE" }
+        { method: "DELETE" },
       );
       if (!res.ok) throw new Error("Échec de la suppression");
 
@@ -159,33 +139,19 @@ export default function ProductsPage() {
     {
       id: "actions",
       header: "Actions",
-      size: 200, // Increased size for new button
+      size: 120,
       Cell: ({ row }) => (
         <div className="flex gap-2">
           <button
-            onClick={() => handleCreateProductionOrder(row.original)}
-            className="p-1.5 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-md transition-colors"
-            title="Create Production Order"
-          >
-            <ClipboardList className="w-5 h-5" />
-          </button>
-          {/* <button
-            onClick={() => handleViewCraftProducts(row.original)}
-            className="p-1.5 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-md transition-colors"
-            title="Voir les produits artisanaux"
-          >
-            <Package className="w-5 h-5" />
-          </button> */}
-          <button
             onClick={() => handleEdit(row.original)}
-            className="p-1.5 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md transition-colors"
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
             title="Modifier"
           >
             <Pencil className="w-5 h-5" />
           </button>
           <button
             onClick={() => handleDelete(row.original)}
-            className="p-1.5 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+            className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
             title="Supprimer"
           >
             <Trash2 className="w-5 h-5" />
@@ -288,7 +254,6 @@ export default function ProductsPage() {
         </Toast.Root>
         <Toast.Viewport className="fixed top-4 right-4 w-96 max-w-full outline-none z-50" />
 
-        {/* Delete Confirmation Dialog */}
         <Dialog.Root open={dialogOpen} onOpenChange={setDialogOpen}>
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 bg-black/50 z-40" />
@@ -321,18 +286,6 @@ export default function ProductsPage() {
             </Dialog.Content>
           </Dialog.Portal>
         </Dialog.Root>
-
-        {/* Production Order Dialog */}
-        <ProductionOrderDialog
-          open={prodOrderDialogOpen}
-          onOpenChange={setProdOrderDialogOpen}
-          productId={selectedProductForOrder?.id || 0}
-          productName={selectedProductForOrder?.name || ""}
-          onSuccess={() => {
-            // Refresh data or show success message
-            showToast("Production order created successfully!");
-          }}
-        />
       </div>
     </Toast.Provider>
   );

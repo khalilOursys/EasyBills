@@ -59,14 +59,9 @@ const navItems: NavItem[] = [
     icon: <ReceiptIcon size={20} />,
     subItems: [
       {
-        name: "Produits & Services",
+        name: "Factures d'achat",
         path: "/purchase-invoice/list/PURCHASE_INVOICE",
         icon: <PackageIcon size={16} />
-      },
-      {
-        name: "Matières Premières",
-        path: "/purchase-invoice/list/RAW_MATERIAL_PURCHASE",
-        icon: <LayersIcon size={16} />
       },
       /* {
         name: "Factures d'achat",
@@ -133,21 +128,6 @@ const navItems: NavItem[] = [
         path: "/products",
       },
       {
-        name: "Matières Premières",
-        icon: <LayersIcon size={20} />,
-        path: "/raw-materials",
-      },
-      {
-        name: "Services",
-        icon: <WrenchIcon size={20} />,
-        path: "/services",
-      },
-      {
-        name: "Unités",
-        icon: <RulerIcon size={20} />,
-        path: "/units",
-      },
-      {
         name: "Marques",
         icon: <PieChartIcon />,
         path: "/brands",
@@ -161,6 +141,17 @@ const navItems: NavItem[] = [
         name: "Inventaire",
         icon: <WarehouseIcon size={20} />,
         path: "/inventory",
+      },
+    ],
+  },
+  {
+    name: "Vente comptoir",
+    icon: <TrendingUpIcon />,
+    subItems: [
+      {
+        name: "Point de vente",
+        icon: <ShoppingCartIcon size={20} />,
+        path: "/pos",
       },
     ],
   },
