@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Select from "react-select";
@@ -62,8 +62,6 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
     const [toastType, setToastType] = React.useState<"success" | "error">("success");
     const [isLoading, setIsLoading] = React.useState(true);
     const [currentUser, setCurrentUser] = useState<any>(null);
-    const [showServiceDropdown, setShowServiceDropdown] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
 
     // Refs for loading state management
     let loadPromise: Promise<void> | null = null;
@@ -99,15 +97,6 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
         loadingShippingNotes,
         setLoadingShippingNotes,
         calculateTotals,
-        services,
-        selectedServices,
-        setSelectedServices,
-        addService,
-        removeService,
-        calculateServiceTotal,
-        getServiceIds,
-        getServiceAmounts,
-        loadServicesFromDeliveryNotes,
     } = useInvoiceData("DELIVERY_NOTE", true);
 
     // Get current user from localStorage
@@ -215,17 +204,6 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
                     setInvoiceItems(formattedItems);
                 }
 
-                // Load services if they exist
-                if (data.services && data.services.length > 0) {
-                    const formattedServices = data.services.map((svc: any) => ({
-                        id: svc.service.id,
-                        name: svc.service.name,
-                        price: svc.amount || svc.service.price || 0,
-                        isActive: svc.service.isActive,
-                    }));
-                    setSelectedServices(formattedServices);
-                }
-
                 hasLoaded = true;
 
             } catch (error) {
@@ -257,20 +235,10 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
         }
     }, [filteredDrivers, driver]);
 
-    // Recalculate totals when items or services change
+    // Recalculate totals when items change
     useEffect(() => {
         calculateTotals();
-    }, [invoiceItems, selectedServices, calculateTotals]);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setShowServiceDropdown(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    }, [invoiceItems, calculateTotals]);
 
     const showToast = (msg: string, type: "success" | "error" = "success") => {
         setToastMsg(msg);
@@ -381,14 +349,6 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
         return selectedShippingNote && shippingNoteProducts.length > 0;
     };
 
-    const handleToggleDropdown = () => {
-        setShowServiceDropdown(!showServiceDropdown);
-    };
-
-    const availableServices = services.filter(
-        (s: any) => !selectedServices.find((selected: any) => selected.id === s.id)
-    );
-
     const submitForm = async (event: React.FormEvent) => {
         event.preventDefault();
 
@@ -402,8 +362,8 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
             return;
         }
 
-        if (invoiceItems.length === 0 && selectedServices.length === 0) {
-            showToast("Au moins un article ou service est obligatoire", "error");
+        if (invoiceItems.length === 0) {
+            showToast("Au moins un article est obligatoire", "error");
             return;
         }
 
@@ -437,8 +397,6 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
             totalHT,
             totalTTC,
             clientId: client.value,
-            serviceIds: getServiceIds(),
-            serviceAmounts: getServiceAmounts(),
         };
 
         if (driver) {
@@ -631,103 +589,6 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
                                 </div>
                             )}
 
-                            {/* Services Section */}
-                            <div className="mt-6">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Services <span className="text-xs text-gray-500">(optionnel)</span>
-                                    {selectedServices.length > 0 && (
-                                        <span className="ml-2 inline-block rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-600 dark:bg-purple-900 dark:text-purple-200">
-                                            {selectedServices.length} sélectionné(s)
-                                        </span>
-                                    )}
-                                </label>
-
-                                <div className="min-h-[42px] rounded-lg border-[1.5px] border-stroke bg-transparent px-3 py-2 dark:border-form-strokedark dark:bg-form-input">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {selectedServices.map((service: any, index: number) => (
-                                            <span
-                                                key={index}
-                                                className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                                            >
-                                                {service.name} ({service.price?.toFixed(3) || '0.000'} TND)
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeService(service.id)}
-                                                    className="ml-1 text-blue-600 hover:text-red-600 dark:text-blue-400 dark:hover:text-red-400"
-                                                >
-                                                    ×
-                                                </button>
-                                            </span>
-                                        ))}
-
-                                        <div className="relative" ref={dropdownRef}>
-                                            <button
-                                                type="button"
-                                                onClick={handleToggleDropdown}
-                                                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                            >
-                                                + Ajouter un service
-                                            </button>
-
-                                            {showServiceDropdown && (
-                                                <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-64 overflow-y-auto rounded-lg border border-stroke bg-white shadow-lg dark:border-strokedark dark:bg-boxdark">
-                                                    {availableServices.length === 0 ? (
-                                                        <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                                            Tous les services sont sélectionnés
-                                                        </div>
-                                                    ) : (
-                                                        availableServices.map((service: any) => (
-                                                            <button
-                                                                key={service.id}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    addService(service);
-                                                                    setShowServiceDropdown(false);
-                                                                }}
-                                                                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-meta-4"
-                                                            >
-                                                                <span>{service.name}</span>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                    {service.price?.toFixed(3) || '0.000'} TND
-                                                                </span>
-                                                            </button>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <small className="text-muted mt-1 block text-sm">
-                                    Sélectionnez les services à ajouter au bon de livraison
-                                    {selectedServices.length > 0 && " - Les services sont inclus dans le total avec TVA 19%"}
-                                </small>
-
-                                {selectedServices.length > 0 && (
-                                    <div className="mt-2 bg-gray-50 dark:bg-meta-4 rounded-lg p-3">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="font-medium">Total services (HT):</span>
-                                            <span className="font-bold text-primary">
-                                                {calculateServiceTotal().toFixed(3)} TND
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-sm mt-1">
-                                            <span className="font-medium">TVA (19%):</span>
-                                            <span className="font-bold text-primary">
-                                                {(calculateServiceTotal() * 0.19).toFixed(3)} TND
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-sm mt-1 border-t pt-1">
-                                            <span className="font-medium">Total services (TTC):</span>
-                                            <span className="font-bold text-primary">
-                                                {(calculateServiceTotal() * 1.19).toFixed(3)} TND
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
                             {/* Items Table */}
                             <div className="mt-6">
                                 <div className="flex items-center justify-between mb-4">
@@ -741,9 +602,12 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
                                         </svg>
                                         Ajouter un article
                                     </button>
-                                    {selectedServices.length > 0 && (
-                                        <span className="inline-block rounded-full bg-purple-100 px-4 py-2 text-sm text-purple-600 dark:bg-purple-900 dark:text-purple-200">
-                                            {selectedServices.length} service(s) ajouté(s)
+                                    {selectedShippingNote && (
+                                        <span className="inline-block rounded-full bg-blue-100 px-4 py-2 text-sm text-blue-600 dark:bg-blue-900 dark:text-blue-200">
+                                            <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Données chargées depuis: {selectedShippingNote.label}
                                         </span>
                                     )}
                                 </div>
@@ -914,7 +778,7 @@ function UpdateDeliveryNoteContent({ id }: { id: string }) {
                                 <div className="flex items-center gap-2 text-blue-600">
                                     <span>📦</span>
                                     <span className="font-medium">
-                                        Bon de livraison - Client requis, chauffeur, bon sortie et services facultatifs
+                                        Bon de livraison - Client requis, chauffeur et bon sortie facultatifs
                                     </span>
                                 </div>
                             </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Select from "react-select";
@@ -72,8 +72,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
     const [isLoading, setIsLoading] = React.useState(true);
     const [selectedDeliveryNotes, setSelectedDeliveryNotes] = React.useState<any[]>([]);
     const [loadingConsolidation, setLoadingConsolidation] = React.useState(false);
-    const [showServiceDropdown, setShowServiceDropdown] = React.useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
 
     const {
         date,
@@ -96,32 +94,7 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
         loadingDeliveryNotes,
         setLoadingDeliveryNotes,
         calculateTotals,
-        services,
-        selectedServices,
-        setSelectedServices,
-        addService,
-        removeService,
-        calculateServiceTotal,
-        getServiceIds,
-        getServiceAmounts,
-        loadServicesFromDeliveryNotes,
     } = useInvoiceData("SALE_INVOICE", true);
-
-    // Click outside handler for service dropdown
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setShowServiceDropdown(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    // Available services for dropdown
-    const availableServices = services.filter(
-        (s: any) => !selectedServices.find((selected: any) => selected.id === s.id)
-    );
 
     // Fetch delivery notes for client - with module-level lock
     const fetchDeliveryNotesForClient = async (clientId: number) => {
@@ -159,11 +132,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
 
     // Fetch invoice data - using module-level Promise lock
     useEffect(() => {
-        // If already loaded, skip 
-        /* 
-
-        if (hasLoaded) return; */
-
         // If there's already a loading promise, wait for it
         if (loadPromise) {
             loadPromise.then(() => {
@@ -203,16 +171,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
                         totalTTC: (item.price || 0) * (item.quantity || 0) * (1 + (item.vatRate || 0) / 100),
                     }));
                     setInvoiceItems(formattedItems);
-                }
-
-                if (data.services && data.services.length > 0) {
-                    const formattedServices = data.services.map((svc: any) => ({
-                        id: svc.service.id,
-                        name: svc.service.name,
-                        price: svc.amount || svc.service.price || 0,
-                        isActive: svc.service.isActive,
-                    }));
-                    setSelectedServices(formattedServices);
                 }
 
                 if (data.consolidatedDeliveryNotes && data.consolidatedDeliveryNotes.length > 0) {
@@ -371,17 +329,7 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
                 });
             });
 
-            const loadedServices = loadServicesFromDeliveryNotes(selectedNotesData);
-
             setInvoiceItems(combinedItems);
-
-            if (loadedServices.length > 0) {
-                setSelectedServices(loadedServices);
-                showToast(`${loadedServices.length} service(s) chargé(s) depuis les bons de livraison`, "success");
-            } else {
-                setSelectedServices([]);
-            }
-
             showToast("Données chargées avec succès", "success");
         } catch (error) {
             console.error("Error loading delivery notes:", error);
@@ -419,8 +367,8 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
             return;
         }
 
-        if (invoiceItems.length === 0 && selectedServices.length === 0) {
-            showToast("Au moins un article ou service est obligatoire", "error");
+        if (invoiceItems.length === 0) {
+            showToast("Au moins un article est obligatoire", "error");
             return;
         }
 
@@ -449,8 +397,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
             totalTTC,
             clientId: client.value,
             deliveryNoteIds: selectedDeliveryNotes.map((note: any) => note.value),
-            serviceIds: getServiceIds(),
-            serviceAmounts: getServiceAmounts(),
         };
 
         updateMutation.mutate({ id, data: invoiceData });
@@ -574,7 +520,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
                                         onChange={(e) => {
                                             setClient(e);
                                             setSelectedDeliveryNotes([]);
-                                            setSelectedServices([]);
                                             // Reset delivery notes fetched flag for new client
                                             deliveryNotesFetched = false;
                                             currentClientId = e?.value || null;
@@ -583,103 +528,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
                                         classNamePrefix="react-select"
                                     />
                                 </div>
-                            </div>
-
-                            {/* Services Section */}
-                            <div className="mt-6">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Services <span className="text-xs text-gray-500">(optionnel)</span>
-                                    {selectedServices.length > 0 && (
-                                        <span className="ml-2 inline-block rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-600 dark:bg-purple-900 dark:text-purple-200">
-                                            {selectedServices.length} sélectionné(s)
-                                        </span>
-                                    )}
-                                </label>
-
-                                <div className="min-h-[42px] rounded-lg border-[1.5px] border-stroke bg-transparent px-3 py-2 dark:border-form-strokedark dark:bg-form-input">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {selectedServices.map((service: any, index: number) => (
-                                            <span
-                                                key={index}
-                                                className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                                            >
-                                                {service.name} ({service.price?.toFixed(3) || '0.000'} TND)
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeService(service.id)}
-                                                    className="ml-1 text-blue-600 hover:text-red-600 dark:text-blue-400 dark:hover:text-red-400"
-                                                >
-                                                    ×
-                                                </button>
-                                            </span>
-                                        ))}
-
-                                        <div className="relative" ref={dropdownRef}>
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowServiceDropdown(!showServiceDropdown)}
-                                                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                            >
-                                                + Ajouter un service
-                                            </button>
-
-                                            {showServiceDropdown && (
-                                                <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-64 overflow-y-auto rounded-lg border border-stroke bg-white shadow-lg dark:border-strokedark dark:bg-boxdark">
-                                                    {availableServices.length === 0 ? (
-                                                        <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                                            Tous les services sont sélectionnés
-                                                        </div>
-                                                    ) : (
-                                                        availableServices.map((service: any) => (
-                                                            <button
-                                                                key={service.id}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    addService(service);
-                                                                    setShowServiceDropdown(false);
-                                                                }}
-                                                                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-meta-4"
-                                                            >
-                                                                <span>{service.name}</span>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                    {service.price?.toFixed(3) || '0.000'} TND
-                                                                </span>
-                                                            </button>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <small className="text-muted mt-1 block text-sm">
-                                    Sélectionnez les services à ajouter à la facture
-                                    {selectedServices.length > 0 && " - Les services sont inclus dans le total avec TVA 19%"}
-                                </small>
-
-                                {selectedServices.length > 0 && (
-                                    <div className="mt-2 bg-gray-50 dark:bg-meta-4 rounded-lg p-3">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="font-medium">Total services (HT):</span>
-                                            <span className="font-bold text-primary">
-                                                {calculateServiceTotal().toFixed(3)} TND
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-sm mt-1">
-                                            <span className="font-medium">TVA (19%):</span>
-                                            <span className="font-bold text-primary">
-                                                {(calculateServiceTotal() * 0.19).toFixed(3)} TND
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-sm mt-1 border-t pt-1">
-                                            <span className="font-medium">Total services (TTC):</span>
-                                            <span className="font-bold text-primary">
-                                                {(calculateServiceTotal() * 1.19).toFixed(3)} TND
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             {/* Delivery Notes Section */}
@@ -716,8 +564,7 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
                                                                 value={selectedDeliveryNotes}
                                                                 options={deliveryNotes.map((note: any) => ({
                                                                     value: note.id,
-                                                                    label: `${note.invoiceNumber} - ${new Date(note.date).toLocaleDateString()} - ${note.totalTTC?.toFixed(2)} TND` +
-                                                                        (note.services?.length > 0 ? ` (${note.services.length} services)` : ''),
+                                                                    label: `${note.invoiceNumber} - ${new Date(note.date).toLocaleDateString()} - ${note.totalTTC?.toFixed(2)} TND`,
                                                                 })) as any}
                                                                 onChange={handleDeliveryNoteSelect}
                                                                 isDisabled={loadingDeliveryNotes}
@@ -777,14 +624,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
                                                         )}
                                                     </div>
                                                 </div>
-
-                                                {selectedServices.length > 0 && (
-                                                    <div className="mt-3 p-2 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
-                                                        <p className="text-sm text-purple-700 dark:text-purple-300">
-                                                            <span className="font-medium">✓ {selectedServices.length} service(s)</span> seront inclus dans la facture
-                                                        </p>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -813,7 +652,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
                                                                     <th className="border-b p-3 text-right text-xs">Total TTC</th>
                                                                     <th className="border-b p-3 text-left text-xs">Statut</th>
                                                                     <th className="border-b p-3 text-center text-xs">Articles</th>
-                                                                    <th className="border-b p-3 text-center text-xs">Services</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
@@ -831,15 +669,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
                                                                             <span className="inline-block rounded-full bg-gray-200 px-2 py-1 text-xs dark:bg-gray-600">
                                                                                 {note.items?.length || 0}
                                                                             </span>
-                                                                        </td>
-                                                                        <td className="p-3 text-center">
-                                                                            {note.services?.length > 0 ? (
-                                                                                <span className="inline-block rounded-full bg-purple-200 px-2 py-1 text-xs text-purple-700 dark:bg-purple-900 dark:text-purple-200">
-                                                                                    {note.services.length}
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="text-xs text-gray-400">-</span>
-                                                                            )}
                                                                         </td>
                                                                     </tr>
                                                                 ))}
@@ -876,11 +705,6 @@ function UpdateSaleInvoiceContent({ id }: { id: string }) {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                             </svg>
                                             Données consolidées de {selectedDeliveryNotes.length} bon(s)
-                                        </span>
-                                    )}
-                                    {selectedServices.length > 0 && (
-                                        <span className="inline-block rounded-full bg-purple-100 px-4 py-2 text-sm text-purple-600 dark:bg-purple-900 dark:text-purple-200">
-                                            {selectedServices.length} service(s) ajouté(s)
                                         </span>
                                     )}
                                 </div>

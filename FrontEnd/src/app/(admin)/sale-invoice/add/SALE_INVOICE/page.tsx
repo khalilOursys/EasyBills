@@ -30,8 +30,6 @@ export default function AddSaleInvoicePage() {
     const [toastOpen, setToastOpen] = React.useState(false);
     const [toastMsg, setToastMsg] = React.useState("");
     const [toastType, setToastType] = React.useState<"success" | "error">("success");
-    const dropdownRef = useRef<HTMLDivElement>(null);
-    const [showServiceDropdown, setShowServiceDropdown] = useState(false);
 
     const [selectedDeliveryNotes, setSelectedDeliveryNotes] = useState([]);
     const [loadingConsolidation, setLoadingConsolidation] = useState(false);
@@ -45,44 +43,19 @@ export default function AddSaleInvoicePage() {
         setInvoiceNumber,
         products,
         clients,
-        drivers,
         client,
         setClient,
         totalHT,
-        setTotalHT,
         totalTTC,
-        setTotalTTC,
         totalVAT,
-        setTotalVAT,
         status,
         setStatus,
         deliveryNotes,
         setDeliveryNotes,
         loadingDeliveryNotes,
         setLoadingDeliveryNotes,
-        dispatch,
         calculateTotals,
-        // Services from hook
-        services,
-        selectedServices,
-        setSelectedServices,
-        addService,
-        removeService,
-        calculateServiceTotal,
-        getServiceIds,
-        getServiceAmounts,
-        loadServicesFromDeliveryNotes,
     } = useInvoiceData("SALE_INVOICE", false);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-                setShowServiceDropdown(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
 
     // Fetch delivery notes for clients
     useEffect(() => {
@@ -109,8 +82,6 @@ export default function AddSaleInvoicePage() {
 
         fetchDeliveryNotes();
     }, [client]);
-
-    // Recalculate totals when items or services change 
 
     const showToast = (msg: string, type: "success" | "error" = "success") => {
         setToastMsg(msg);
@@ -177,19 +148,10 @@ export default function AddSaleInvoicePage() {
         setInvoiceItems(newItems);
     };
 
-    const handleToggleDropdown = () => {
-        setShowServiceDropdown(!showServiceDropdown);
-    };
-
-    const availableServices = services.filter(
-        (s: any) => !selectedServices.find(selected => selected.id === s.id)
-    );
-
     const handleDeliveryNoteSelect = (selectedOptions: any) => {
         setSelectedDeliveryNotes(selectedOptions || []);
     };
 
-    // FIXED: Load data from selected delivery notes including services
     const loadSelectedDeliveryNotes = async () => {
         if (selectedDeliveryNotes.length === 0) {
             showToast("Veuillez sélectionner au moins un bon de livraison", "error");
@@ -230,29 +192,8 @@ export default function AddSaleInvoicePage() {
                 });
             });
 
-            // Load services from selected delivery notes
-            const loadedServices = loadServicesFromDeliveryNotes(selectedNotesData);
-
-            // CRITICAL FIX: Set both items and services in a single batch
-            // Use React's state batching by setting them together
             setInvoiceItems(combinedItems);
 
-            // If services were loaded, set them
-            if (loadedServices.length > 0) {
-                setSelectedServices(loadedServices);
-                showToast(`${loadedServices.length} service(s) chargé(s) depuis les bons de livraison`, "success");
-            } else {
-                // Clear services if none were loaded
-                setSelectedServices([]);
-            }
-
-            // CRITICAL FIX: Recalculate totals after all state updates are complete
-            // Use setTimeout with a slightly longer delay to ensure all states are updated
-            /* setTimeout(() => {
-                calculateTotals();
-            }, 200); */
-
-            // Set invoice number suggestion (optional)
             if (!invoiceNumber) {
                 setInvoiceNumber(`FAC-${new Date().toISOString().slice(0, 10)}`);
             }
@@ -266,15 +207,12 @@ export default function AddSaleInvoicePage() {
         }
     };
 
-    // FIXED: Load single delivery note data with services
     const loadDeliveryNoteData = (deliveryNote: any) => {
         if (
             window.confirm("Voulez-vous charger les données de ce bon de livraison ?")
         ) {
             setInvoiceNumber(deliveryNote.invoiceNumber);
             setDate(deliveryNote.date.split("T")[0]);
-            setTotalHT(deliveryNote.totalHT);
-            setTotalTTC(deliveryNote.totalTTC);
 
             setClient({
                 value: deliveryNote.client.id,
@@ -298,31 +236,6 @@ export default function AddSaleInvoicePage() {
                 }))
             );
 
-            // Load services from single delivery note
-            console.log("bbbb", deliveryNote.services);
-            if (deliveryNote.services && deliveryNote.services.length > 0) {
-                const allServices: any[] = [];
-                const serviceIds = new Set();
-
-                deliveryNote.services.forEach((service: any) => {
-                    if (!serviceIds.has(service.id)) {
-                        serviceIds.add(service.id);
-                        allServices.push({
-                            ...service,
-                            price: service.price || 0
-                        });
-                    }
-                });
-                console.log("eeee", deliveryNote.services);
-                console.log("bbbb", allServices);
-
-                if (allServices.length > 0) {
-                    setSelectedServices(allServices);
-                    showToast(`${allServices.length} service(s) chargé(s) depuis le bon de livraison`, "success");
-                }
-            }
-
-            // CRITICAL FIX: Recalculate totals after setting items and services
             setTimeout(() => {
                 calculateTotals();
             }, 100);
@@ -361,8 +274,8 @@ export default function AddSaleInvoicePage() {
             return;
         }
 
-        if (invoiceItems.length === 0 && selectedServices.length === 0) {
-            showToast("Au moins un article ou service est obligatoire", "error");
+        if (invoiceItems.length === 0) {
+            showToast("Au moins un article est obligatoire", "error");
             return;
         }
 
@@ -391,9 +304,6 @@ export default function AddSaleInvoicePage() {
             totalTTC,
             clientId: client.value,
             deliveryNoteIds: selectedDeliveryNotes.map((note: any) => note.value),
-            // Services data
-            serviceIds: getServiceIds(),
-            serviceAmounts: getServiceAmounts(),
         };
 
         addMutation.mutate(invoiceData);
@@ -410,19 +320,6 @@ export default function AddSaleInvoicePage() {
         value: note.id,
         label: `${note.invoiceNumber} - ${new Date(note.date).toLocaleDateString()} - ${note.totalTTC?.toFixed(2)} TND`,
     }));
-
-    const getSelectedProductOption = (productId: any) => {
-        if (!productId) return null;
-        const product = products.find((p: any) => p.id === productId);
-        return product
-            ? {
-                value: product.id,
-                label: product.name,
-                price: product.salePrice || product.price || 0,
-                vatRate: product.vat,
-            }
-            : null;
-    };
 
     return (
         <Toast.Provider>
@@ -519,112 +416,11 @@ export default function AddSaleInvoicePage() {
                                         onChange={(e) => {
                                             setClient(e);
                                             setSelectedDeliveryNotes([]);
-                                            console.log("eeee");
-
-                                            setSelectedServices([]); // Clear services when client changes
                                         }}
                                         className="react-select-container"
                                         classNamePrefix="react-select"
                                     />
                                 </div>
-                            </div>
-
-                            {/* Services Section */}
-                            <div className="mt-6">
-                                <label className="mb-3 block text-sm font-medium text-black dark:text-white">
-                                    Services <span className="text-xs text-gray-500">(optionnel)</span>
-                                    {selectedServices.length > 0 && (
-                                        <span className="ml-2 inline-block rounded-full bg-purple-100 px-2 py-1 text-xs text-purple-600 dark:bg-purple-900 dark:text-purple-200">
-                                            {selectedServices.length} sélectionné(s)
-                                        </span>
-                                    )}
-                                </label>
-
-                                <div className="min-h-[42px] rounded-lg border-[1.5px] border-stroke bg-transparent px-3 py-2 dark:border-form-strokedark dark:bg-form-input">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {selectedServices.map((service: any, index: number) => (
-                                            <span
-                                                /* key={service.id} */
-                                                key={index}
-                                                className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-200"
-                                            >
-                                                {service.name} ({service.price?.toFixed(3) || '0.000'} TND)
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeService(service.id)}
-                                                    className="ml-1 text-blue-600 hover:text-red-600 dark:text-blue-400 dark:hover:text-red-400"
-                                                >
-                                                    ×
-                                                </button>
-                                            </span>
-                                        ))}
-
-                                        <div className="relative" ref={dropdownRef}>
-                                            <button
-                                                type="button"
-                                                onClick={handleToggleDropdown}
-                                                className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                                            >
-                                                + Ajouter un service
-                                            </button>
-
-                                            {showServiceDropdown && (
-                                                <div className="absolute left-0 top-full z-50 mt-1 max-h-60 w-64 overflow-y-auto rounded-lg border border-stroke bg-white shadow-lg dark:border-strokedark dark:bg-boxdark">
-                                                    {availableServices.length === 0 ? (
-                                                        <div className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                                                            Tous les services sont sélectionnés
-                                                        </div>
-                                                    ) : (
-                                                        availableServices.map((service: any) => (
-                                                            <button
-                                                                key={service.id}
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    addService(service);
-                                                                    setShowServiceDropdown(false);
-                                                                }}
-                                                                className="flex w-full items-center justify-between px-4 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-meta-4"
-                                                            >
-                                                                <span>{service.name}</span>
-                                                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                                    {service.price?.toFixed(3) || '0.000'} TND
-                                                                </span>
-                                                            </button>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <small className="text-muted mt-1 block text-sm">
-                                    Sélectionnez les services à ajouter à la facture
-                                    {selectedServices.length > 0 && " - Les services sont inclus dans le total avec TVA 19%"}
-                                </small>
-
-                                {selectedServices.length > 0 && (
-                                    <div className="mt-2 bg-gray-50 dark:bg-meta-4 rounded-lg p-3">
-                                        <div className="flex justify-between text-sm">
-                                            <span className="font-medium">Total services (HT):</span>
-                                            <span className="font-bold text-primary">
-                                                {calculateServiceTotal().toFixed(3)} TND
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-sm mt-1">
-                                            <span className="font-medium">TVA (19%):</span>
-                                            <span className="font-bold text-primary">
-                                                {(calculateServiceTotal() * 0.19).toFixed(3)} TND
-                                            </span>
-                                        </div>
-                                        <div className="flex justify-between text-sm mt-1 border-t pt-1">
-                                            <span className="font-medium">Total services (TTC):</span>
-                                            <span className="font-bold text-primary">
-                                                {(calculateServiceTotal() * 1.19).toFixed(3)} TND
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             {/* Delivery Notes Section */}
@@ -649,7 +445,6 @@ export default function AddSaleInvoicePage() {
                                             </div>
                                             <div className="p-4">
                                                 <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
-                                                    {/* Select - takes remaining space */}
                                                     <div className="flex-1 w-full md:w-auto min-w-0">
                                                         <label className="mb-3 block text-sm font-medium text-black dark:text-white">
                                                             Sélectionner les bons de livraison à consolider
@@ -662,8 +457,7 @@ export default function AddSaleInvoicePage() {
                                                                 value={selectedDeliveryNotes}
                                                                 options={deliveryNotes.map((note: any) => ({
                                                                     value: note.id,
-                                                                    label: `${note.invoiceNumber} - ${new Date(note.date).toLocaleDateString()} - ${note.totalTTC?.toFixed(2)} TND` +
-                                                                        (note.services?.length > 0 ? ` (${note.services.length} services)` : ''),
+                                                                    label: `${note.invoiceNumber} - ${new Date(note.date).toLocaleDateString()} - ${note.totalTTC?.toFixed(2)} TND`,
                                                                 })) as any}
                                                                 onChange={handleDeliveryNoteSelect}
                                                                 isDisabled={loadingDeliveryNotes}
@@ -683,14 +477,8 @@ export default function AddSaleInvoicePage() {
                                                                 }}
                                                             />
                                                         </div>
-                                                        {/* {selectedDeliveryNotes.length > 0 && (
-                                                            <small className="text-muted mt-1 block text-sm">
-                                                                {selectedDeliveryNotes.length} bon(s) sélectionné(s)
-                                                            </small>
-                                                        )} */}
                                                     </div>
 
-                                                    {/* Buttons - fixed width, no wrapping */}
                                                     <div className="flex items-center gap-2 flex-shrink-0">
                                                         <button
                                                             type="button"
@@ -729,14 +517,6 @@ export default function AddSaleInvoicePage() {
                                                         )}
                                                     </div>
                                                 </div>
-
-                                                {selectedServices.length > 0 && (
-                                                    <div className="mt-3 p-2 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
-                                                        <p className="text-sm text-purple-700 dark:text-purple-300">
-                                                            <span className="font-medium">✓ {selectedServices.length} service(s)</span> seront inclus dans la facture
-                                                        </p>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -765,7 +545,6 @@ export default function AddSaleInvoicePage() {
                                                                     <th className="border-b p-3 text-right text-xs">Total TTC</th>
                                                                     <th className="border-b p-3 text-left text-xs">Statut</th>
                                                                     <th className="border-b p-3 text-center text-xs">Articles</th>
-                                                                    <th className="border-b p-3 text-center text-xs">Services</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
@@ -783,15 +562,6 @@ export default function AddSaleInvoicePage() {
                                                                             <span className="inline-block rounded-full bg-gray-200 px-2 py-1 text-xs dark:bg-gray-600">
                                                                                 {note.items?.length || 0}
                                                                             </span>
-                                                                        </td>
-                                                                        <td className="p-3 text-center">
-                                                                            {note.services?.length > 0 ? (
-                                                                                <span className="inline-block rounded-full bg-purple-200 px-2 py-1 text-xs text-purple-700 dark:bg-purple-900 dark:text-purple-200">
-                                                                                    {note.services.length}
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="text-xs text-gray-400">-</span>
-                                                                            )}
                                                                         </td>
                                                                     </tr>
                                                                 ))}
@@ -828,11 +598,6 @@ export default function AddSaleInvoicePage() {
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                             </svg>
                                             Données consolidées de {selectedDeliveryNotes.length} bon(s)
-                                        </span>
-                                    )}
-                                    {selectedServices.length > 0 && (
-                                        <span className="inline-block rounded-full bg-purple-100 px-4 py-2 text-sm text-purple-600 dark:bg-purple-900 dark:text-purple-200">
-                                            {selectedServices.length} service(s) ajouté(s)
                                         </span>
                                     )}
                                 </div>
@@ -963,7 +728,7 @@ export default function AddSaleInvoicePage() {
                                 <div className="flex items-center gap-2 text-blue-600">
                                     <span>📄</span>
                                     <span className="font-medium">
-                                        Facture de vente - Client requis, services et bons de livraison facultatifs
+                                        Facture de vente - Client requis, bons de livraison facultatifs
                                     </span>
                                 </div>
                             </div>
