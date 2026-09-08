@@ -1,3 +1,5 @@
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -22,19 +24,30 @@ enum PaymentMethod {
   BANK_TRANSFER
   CREDIT_CARD
   MOBILE_PAYMENT
+  TRAIT
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+  REFUNDED
 }
 
 enum PurchaseInvoiceType {
   PURCHASE_ORDER
   PURCHASE_INVOICE
-  PURCHASE_REFUND // CREDIT NOTE FROM SUPPLIER
+  PURCHASE_REFUND
+  PRODUCT_PURCHASE
+  RAW_MATERIAL_PURCHASE
 }
 
 enum SaleInvoiceType {
   QUOTATION
   DELIVERY_NOTE
   SALE_INVOICE
-  SALE_REFUND // CREDIT NOTE FOR CUSTOMER
+  SALE_REFUND
+  SHIPPING_NOTE_INVOICE
 }
 
 enum InvoiceStatus {
@@ -42,10 +55,94 @@ enum InvoiceStatus {
   VALIDATED
   PAID
   CANCELLED
+  CLOSED
+}
+
+enum StockMovementType {
+  INBOUND
+  OUTBOUND
+  ADJUSTMENT
+  RETURN
+  LOSS
+  TRANSFER
+  INITIAL
+  PURCHASE
+  SALE
+}
+
+enum StockMovementStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum InventoryCountingStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ProductionOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ON_HOLD
+}
+
+enum ProductionOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
 }
 
 //////////////////////////////////////
-// USER
+// UNIT MANAGEMENT
+//////////////////////////////////////
+
+model Unit {
+  id          Int       @id @default(autoincrement())
+  code        String    @unique
+  name        String
+  symbol      String
+  description String?
+  
+  // Unit family: "volume", "weight", "unit"
+  family      String    @default("unit")
+  
+  // Base unit relationship
+  baseUnitId  Int?
+  baseUnit    Unit?     @relation("BaseUnitRelation", fields: [baseUnitId], references: [id])
+  
+  // Conversion factor to base unit (e.g., 1000 for ml to L)
+  conversionToBase Float   @default(1)
+  
+  // Whether this is a standard unit or custom
+  isStandard  Boolean   @default(true)
+  isActive    Boolean   @default(true)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  rawMaterials     RawMaterial[]     @relation("RawMaterialUnit")
+  craftProducts    CraftProduct[]    @relation("CraftProductUnit")
+  productionOrders ProductionOrder[] @relation("ProductionOrderUnit")
+  
+  // Sub-units (if this is a base unit)
+  subUnits    Unit[]    @relation("BaseUnitRelation")
+  
+  // Material relations
+  craftProductMaterials CraftProductMaterial[] @relation("CraftProductMaterialUnit")
+  productionOrderMaterials ProductionOrderMaterial[] @relation("ProductionOrderMaterialUnit")
+  
+  @@map("units")
+}
+
+//////////////////////////////////////
+// BASE MODELS
 //////////////////////////////////////
 
 model User {
@@ -55,13 +152,16 @@ model User {
   telephone  String?
   firstName  String?
   lastName   String?
+  cin        String?
   role       UserRole  @default(COMMERCIAL)
   createdAt  DateTime  @default(now())
+  orders     Order[]
+  stockMovements StockMovement[] @relation("UserStockMovements")
+  inventoryCountsCreated InventoryCount[] @relation("InventoryCountCreator")
+  inventoryCountsCompleted InventoryCount[] @relation("InventoryCountCompleter")
+  stockTransfersRequested StockTransfer[] @relation("StockTransferRequester")
+  stockTransfersApproved StockTransfer[] @relation("StockTransferApprover")
 }
-
-//////////////////////////////////////
-// CATEGORY
-//////////////////////////////////////
 
 model Category {
   id          Int       @id @default(autoincrement())
@@ -70,9 +170,29 @@ model Category {
   products    Product[]
 }
 
-//////////////////////////////////////
-// CLIENT
-//////////////////////////////////////
+model Brand {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique
+  description String?
+  img         String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  products    Product[]
+}
+
+model City {
+  id        Int      @id @default(autoincrement())
+  name      String
+  state     String?
+  country   String   @default("Tunisia")
+  clients   Client[]
+  suppliers Supplier[]
+  saleInvoices SaleInvoiceCity[]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 model Client {
   id           Int             @id @default(autoincrement())
@@ -80,14 +200,13 @@ model Client {
   phone        String?
   address      String?
   taxNumber    String?
-
+  email        String?
+  cityId       Int?
+  city         City?           @relation(fields: [cityId], references: [id])
   saleInvoices SaleInvoice[]
   payments     Payment[]
+  orders       Order[]
 }
-
-//////////////////////////////////////
-// SUPPLIER
-//////////////////////////////////////
 
 model Supplier {
   id               Int                 @id @default(autoincrement())
@@ -97,38 +216,267 @@ model Supplier {
   phone            String?
   address          String?
   bankRib          String?
-
+  email            String?
+  cityId           Int?
+  city             City?               @relation(fields: [cityId], references: [id])
   purchaseInvoices PurchaseInvoice[]
   payments         Payment[]
 }
 
+model Driver {
+  id            Int     @id @default(autoincrement())
+  firstName     String
+  lastName      String
+  phone         String?
+  email         String?
+  cin           String?
+  licenseNumber String?
+  active        Boolean @default(true)
+  saleInvoices  SaleInvoice[]
+  carId         Int?
+  car           Car?    @relation(fields: [carId], references: [id])
+}
+
+model Car {
+  id            Int      @id @default(autoincrement())
+  registration  String   @unique
+  brand         String?
+  model         String?
+  year          Int?
+  driver        Driver[]
+  createdAt     DateTime @default(now())
+}
+
+model CompanySettings {
+  id          Int     @id @default(autoincrement())
+  companyName String?
+  address     String?
+  phone       String?
+  taxNumber   String?
+  logo        String?
+  rib         String?
+  email       String?
+}
+
+model HeroBanner {
+  id          Int      @id @default(autoincrement())
+  name        String?
+  description String?
+  img         String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 //////////////////////////////////////
-// PRODUCT
+// PRODUCT MODEL
 //////////////////////////////////////
 
 model Product {
   id            Int       @id @default(autoincrement())
-  reference     String
-  internalCode  String
+  reference     String?
+  internalCode  String?
   name          String
+  description   String?
 
   stock         Int       @default(0)
   minStock      Int       @default(0)
-  purchasePrice Float
-  marginPercent Float
-  salePrice     Float
+  maxStock      Int?
+  criticalStock Int       @default(2)
+  reservedStock Int       @default(0)
+  
+  purchasePrice Float     @default(0)
+  marginPercent Float     @default(0)
+  salePrice     Float     @default(0)
+  priceIncludingTax Float  @default(0)
   discount      Float     @default(0)
   vat           Float     @default(19)
+  fodec         Float     @default(0)
+  img           String?
 
-  categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id])
+  lastStockUpdate DateTime?
+  lastSaleDate    DateTime?
+  lastPurchaseDate DateTime?
+  
+  isActive      Boolean   @default(true)
+  isInventoryTracked Boolean @default(true)
+
+  categoryId    Int
+  category      Category  @relation(fields: [categoryId], references: [id])
+
+  brandId       Int?
+  brand         Brand?    @relation(fields: [brandId], references: [id])
 
   purchaseInvoiceItems PurchaseInvoiceItem[]
   saleInvoiceItems     SaleInvoiceItem[]
+  orderItems           OrderItem[]
+  stockMovements       StockMovement[]
+  inventoryCountItems  InventoryCountItem[]
+  stockAlert           StockAlert?
+  reservations         StockReservation[]
+  transferItems        StockTransferItem[]
+  
+  craftProducts CraftProduct[]
+  productionOrders ProductionOrder[]
+}
+
+model CraftProduct {
+  id               Int                      @id @default(autoincrement())
+  reference        String?
+  name             String?
+  description      String?                  
+  unitId           Int
+  unit             Unit                     @relation("CraftProductUnit", fields: [unitId], references: [id])
+  amount           Float                    @default(0)
+  totalCost        Float?                   
+  salePrice        Float?                   
+  marginPercent    Float                    @default(30)
+  vat              Float                    @default(19)
+  minStock         Float                    @default(0)
+  img              String?                  
+  isActive         Boolean                  @default(true)
+  productId        Int?                     
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  
+  // Relations
+  product          Product?                 @relation(fields: [productId], references: [id])
+  craftMaterials   CraftProductMaterial[]   
+  craftServices    CraftProductService[]    
+  
+  @@map("craft_products")
+}
+
+model CraftProductMaterial {
+  id              Int          @id @default(autoincrement())
+  craftProductId  Int
+  rawMaterialId   Int
+  amount          Float
+  unitId          Int          // Unit for this specific material in this craft product
+  
+  // Relations
+  craftProduct    CraftProduct @relation(fields: [craftProductId], references: [id], onDelete: Cascade)
+  rawMaterial     RawMaterial  @relation(fields: [rawMaterialId], references: [id])
+  unit            Unit         @relation("CraftProductMaterialUnit", fields: [unitId], references: [id])
+  
+  @@unique([craftProductId, rawMaterialId])
+  @@map("craft_product_materials")
+}
+
+model CraftProductService {
+  id              Int          @id @default(autoincrement())
+  craftProductId  Int
+  serviceId       Int
+  
+  craftProduct    CraftProduct @relation(fields: [craftProductId], references: [id], onDelete: Cascade)
+  service         Service      @relation(fields: [serviceId], references: [id])
+  
+  @@unique([craftProductId, serviceId])
+  @@map("craft_product_services")
+}
+
+model RawMaterial {
+  id              Int                      @id @default(autoincrement())
+  reference       String
+  description     String?
+  name            String
+  unitId          Int
+  unit            Unit                     @relation("RawMaterialUnit", fields: [unitId], references: [id])
+  amount          Float                    @default(0)
+  purchasePrice   Float                    @default(0)
+  isActive        Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  
+  craftMaterials  CraftProductMaterial[]
+  productionOrderMaterials ProductionOrderMaterial[]
+  purchaseInvoiceItems PurchaseInvoiceItem[]
+  
+  @@map("raw_materials")
+}
+
+model Service {
+  id              Int                      @id @default(autoincrement())
+  reference       String
+  description     String?
+  name            String
+  price           Float                    @default(0)
+  vat             Float                    @default(19)  
+  isActive        Boolean                  @default(true)
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  
+  craftServices   CraftProductService[]
+  productionOrderServices ProductionOrderService[]
+  saleInvoices    SaleInvoiceService[]
+  purchaseInvoiceItems PurchaseInvoiceItem[] // NEW: Services can be purchased too
+  
+  @@map("services")
+}
+
+model ProductionOrder {
+  id               Int                      @id @default(autoincrement())
+  unitId           Int
+  unit             Unit                     @relation("ProductionOrderUnit", fields: [unitId], references: [id])
+  amount           Float                    @default(0)
+  totalCost        Float?                   
+  salePrice        Float?                   
+  marginPercent    Float                    @default(30)
+  vat              Float                    @default(19)
+  isActive         Boolean                  @default(true)
+  productId        Int?                     
+  createdAt        DateTime                 @default(now())
+  updatedAt        DateTime                 @updatedAt
+  
+  // Production Order specific fields
+  orderDate        DateTime                 @default(now())
+  expectedDelivery DateTime?
+  status           ProductionOrderStatus    @default(PENDING)
+  priority         ProductionOrderPriority  @default(MEDIUM)
+  notes            String?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  quantityProduced Float?                   
+  wasteAmount      Float?                  
+  
+  // Relations
+  product          Product?                 @relation(fields: [productId], references: [id])
+  productionOrderMaterials ProductionOrderMaterial[]   
+  productionOrderServices  ProductionOrderService[]    
+  
+  @@map("production_orders")
+}
+
+model ProductionOrderMaterial {
+  id                  Int              @id @default(autoincrement())
+  productionOrderId   Int
+  rawMaterialId       Int
+  amount              Float
+  unitId              Int              // Unit for this specific material in this production order
+  
+  // Relations
+  productionOrder     ProductionOrder  @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  rawMaterial         RawMaterial      @relation(fields: [rawMaterialId], references: [id])
+  unit                Unit             @relation("ProductionOrderMaterialUnit", fields: [unitId], references: [id])
+  
+  @@unique([productionOrderId, rawMaterialId])
+  @@map("production_order_materials")
+}
+
+model ProductionOrderService {
+  id                  Int              @id @default(autoincrement())
+  productionOrderId   Int
+  serviceId           Int
+  
+  productionOrder     ProductionOrder  @relation(fields: [productionOrderId], references: [id], onDelete: Cascade)
+  service             Service          @relation(fields: [serviceId], references: [id])
+  
+  @@unique([productionOrderId, serviceId])
+  @@map("production_order_services")
 }
 
 //////////////////////////////////////
-// PURCHASE INVOICE
+// PURCHASE INVOICE MODELS
 //////////////////////////////////////
 
 model PurchaseInvoice {
@@ -137,11 +485,10 @@ model PurchaseInvoice {
   date          DateTime                @default(now())
   type          PurchaseInvoiceType
   status        InvoiceStatus           @default(DRAFT)
-
-  // CREDIT NOTE RELATION (self-relational)
+  
   originalInvoiceId Int?
-  originalInvoice   PurchaseInvoice? @relation("PurchaseRefunds", fields: [originalInvoiceId], references: [id])
-  refunds           PurchaseInvoice[] @relation("PurchaseRefunds")
+  originalInvoice   PurchaseInvoice?    @relation("PurchaseRefunds", fields: [originalInvoiceId], references: [id])
+  refunds           PurchaseInvoice[]   @relation("PurchaseRefunds")
 
   pdfUrl        String?
 
@@ -149,80 +496,161 @@ model PurchaseInvoice {
   supplier      Supplier                @relation(fields: [supplierId], references: [id])
 
   items         PurchaseInvoiceItem[]
-
   payments      Payment[]               @relation("PurchaseInvoicePayments")
 
   totalHT       Float                   @default(0)
   totalTTC      Float                   @default(0)
 
   createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt @default(now())
 }
 
 model PurchaseInvoiceItem {
-  id        Int     @id @default(autoincrement())
-  quantity  Int
-  price     Float
+  id              Int     @id @default(autoincrement())
+  quantity        Float   // Changed to Float to support service hours, kg, units, etc.
+  price           Float
+  receivedQuantity Float?
+  isStockUpdated  Boolean @default(false)
 
-  invoiceId Int
-  productId Int
+  invoiceId       Int
+  productId       Int?
+  rawMaterialId   Int?
+  serviceId       Int?    // NEW: For purchasing services
 
-  invoice   PurchaseInvoice @relation(fields: [invoiceId], references: [id])
-  product   Product         @relation(fields: [productId], references: [id])
+  invoice         PurchaseInvoice @relation(fields: [invoiceId], references: [id])
+  product         Product?        @relation(fields: [productId], references: [id])
+  rawMaterial     RawMaterial?    @relation(fields: [rawMaterialId], references: [id])
+  service         Service?        @relation(fields: [serviceId], references: [id]) // NEW relation
+  
+  stockMovement   StockMovement?
 }
 
 //////////////////////////////////////
-// SALE INVOICE
+// SALE INVOICE MODELS
 //////////////////////////////////////
+
+model SaleInvoiceCity {
+  id            Int         @id @default(autoincrement())
+  saleInvoiceId Int
+  cityId        Int
+  createdAt     DateTime    @default(now())
+
+  saleInvoice   SaleInvoice @relation(fields: [saleInvoiceId], references: [id], onDelete: Cascade)
+  city          City        @relation(fields: [cityId], references: [id])
+
+  @@unique([saleInvoiceId, cityId])
+}
+
+model DeliveryNoteConsolidation {
+  id                        Int @id @default(autoincrement())
+  consolidatedSaleInvoiceId Int
+  consolidatedSaleInvoice   SaleInvoice @relation("ConsolidatedToSource", fields: [consolidatedSaleInvoiceId], references: [id], onDelete: Cascade)
+  
+  sourceDeliveryNoteId      Int
+  sourceDeliveryNote        SaleInvoice @relation("SourceToConsolidated", fields: [sourceDeliveryNoteId], references: [id])
+  
+  createdAt                 DateTime @default(now())
+  
+  @@unique([consolidatedSaleInvoiceId, sourceDeliveryNoteId])
+}
 
 model SaleInvoice {
   id            Int                @id @default(autoincrement())
   invoiceNumber String
   date          DateTime           @default(now())
+  startDate     DateTime?
+  endDate       DateTime?
   type          SaleInvoiceType
   status        InvoiceStatus      @default(DRAFT)
   taxStamp      Float              @default(1)
-  // CREDIT NOTE RELATION (self-relational)
+  
+  shippingNoteId Int?
+  shippingNote   SaleInvoice?      @relation("ShippingNoteToDeliveryNotes", fields: [shippingNoteId], references: [id])
+  deliveryNotes  SaleInvoice[]     @relation("ShippingNoteToDeliveryNotes")
+  
   originalInvoiceId Int?
-  originalInvoice   SaleInvoice? @relation("SaleRefunds", fields: [originalInvoiceId], references: [id])
-  refunds           SaleInvoice[] @relation("SaleRefunds")
+  originalInvoice   SaleInvoice?   @relation("SaleRefunds", fields: [originalInvoiceId], references: [id])
+  refunds           SaleInvoice[]  @relation("SaleRefunds")
+  consolidatedDeliveryNotes DeliveryNoteConsolidation[] @relation("ConsolidatedToSource")
+  consolidatedInInvoice     DeliveryNoteConsolidation[] @relation("SourceToConsolidated")
 
-  clientId      Int
-  client        Client             @relation(fields: [clientId], references: [id])
-
+  clientId      Int?
+  client        Client?            @relation(fields: [clientId], references: [id])
+  
+  driverId      Int?
+  driver        Driver?            @relation(fields: [driverId], references: [id])
+  
+  cities        SaleInvoiceCity[]
   items         SaleInvoiceItem[]
   payments      Payment[]          @relation("SaleInvoicePayments")
+  stockReservations StockReservation[]
+  services      SaleInvoiceService[]
 
   totalHT       Float              @default(0)
   totalTTC      Float              @default(0)
 
   createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model SaleInvoiceService {
+  id              Int       @id @default(autoincrement())
+  saleInvoiceId   Int
+  serviceId       Int
+  amount          Float?    
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  saleInvoice     SaleInvoice @relation(fields: [saleInvoiceId], references: [id], onDelete: Cascade)
+  service         Service     @relation(fields: [serviceId], references: [id])
+
+  //@@unique([saleInvoiceId, serviceId])
 }
 
 model SaleInvoiceItem {
-  id        Int    @id @default(autoincrement())
-  quantity  Int
-  price     Float
+  id                   Int      @id @default(autoincrement())
+  quantity             Int
+  deliveredQuantity    Int?
+  price                Float
+  isStockUpdated       Boolean  @default(false)
 
-  vatRate   Float   @default(0)
-  vatAmount Float   @default(0)
+  vatRate              Float    @default(0)
+  vatAmount            Float    @default(0)
+  
+  shippingNoteItemId   Int?
 
-  invoiceId Int
-  productId Int
+  invoiceId            Int
+  productId            Int
 
-  invoice   SaleInvoice @relation(fields: [invoiceId], references: [id])
-  product   Product     @relation(fields: [productId], references: [id])
+  invoice              SaleInvoice              @relation(fields: [invoiceId], references: [id])
+  product              Product                  @relation(fields: [productId], references: [id])
+
+  shippingNoteItem     SaleInvoiceItem?         @relation("ItemToSource", fields: [shippingNoteItemId], references: [id])
+  derivedItems         SaleInvoiceItem[]        @relation("ItemToSource")
+  
+  stockMovement        StockMovement?
 }
 
 //////////////////////////////////////
-// PAYMENTS
+// PAYMENT MODEL
 //////////////////////////////////////
 
 model Payment {
-  id       Int           @id @default(autoincrement())
-  amount   Float
-  method   PaymentMethod
-  createdAt DateTime     @default(now())
+  id            Int           @id @default(autoincrement())
+  amount        Float
+  method        PaymentMethod
+  createdAt     DateTime      @default(now())
 
+  checkDate     DateTime?
+  checkBank     String?
+  checkNumber   String?
+  
+  traitDate     DateTime?
+  traitNumber   String?
+  
+  receiptFile   String?       
+  receiptFileName String?     
+  
   purchaseInvoiceId Int?
   purchaseInvoice   PurchaseInvoice? @relation("PurchaseInvoicePayments", fields: [purchaseInvoiceId], references: [id])
 
@@ -237,16 +665,232 @@ model Payment {
 }
 
 //////////////////////////////////////
-// COMPANY SETTINGS
+// ORDER MODELS
 //////////////////////////////////////
 
-model CompanySettings {
-  id          Int     @id @default(autoincrement())
-  companyName String?
-  address     String?
-  phone       String?
-  taxNumber   String?
-  logo        String?
-  rib         String?
-  email       String?
+model Order {
+  id            Int          @id @default(autoincrement())
+  orderNumber   String       @unique
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  
+  items         OrderItem[]
+  orderPayments OrderPayment[]
+  
+  subtotal      Float        @default(0)
+  discountPercent Float      @default(0)
+  discountAmount Float       @default(0)
+  discountedSubtotal Float   @default(0)
+  tax           Float        @default(0)
+  total         Float        @default(0)
+  
+  clientId      Int?
+  client        Client?      @relation(fields: [clientId], references: [id])
+  
+  status        OrderStatus  @default(PENDING)
+  tableNumber   String?
+  notes         String?
+  
+  cashierId     Int
+  cashier       User         @relation(fields: [cashierId], references: [id])
+  
+  stockReservations StockReservation[]
+  stockReleasedAt DateTime?
+}
+
+model OrderItem {
+  id              Int      @id @default(autoincrement())
+  quantity        Int
+  price           Float    @default(0)
+  total           Float    @default(0)
+  
+  orderId         Int
+  order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId       Int
+  product         Product  @relation(fields: [productId], references: [id])
+  
+  stockMovement   StockMovement?
+}
+
+model OrderPayment {
+  id            Int           @id @default(autoincrement())
+  amount        Float
+  method        PaymentMethod
+  change        Float?        @default(0)
+  createdAt     DateTime      @default(now())
+  
+  orderId       Int
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+//////////////////////////////////////
+// INVENTORY MODELS
+//////////////////////////////////////
+
+model StockMovement {
+  id              Int                @id @default(autoincrement())
+  movementNumber  String             @unique
+  type            StockMovementType
+  quantity        Int
+  previousStock   Int
+  newStock        Int
+  reason          String?
+  reference       String?
+  status          StockMovementStatus @default(COMPLETED)
+  
+  productId       Int
+  product         Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  purchaseInvoiceItemId Int?         @unique
+  purchaseInvoiceItem   PurchaseInvoiceItem? @relation(fields: [purchaseInvoiceItemId], references: [id])
+  
+  saleInvoiceItemId Int?              @unique
+  saleInvoiceItem   SaleInvoiceItem? @relation(fields: [saleInvoiceItemId], references: [id])
+  
+  orderItemId     Int?               @unique
+  orderItem       OrderItem?         @relation(fields: [orderItemId], references: [id])
+  
+  inventoryCountId Int?
+  inventoryCount  InventoryCount?    @relation(fields: [inventoryCountId], references: [id])
+  
+  createdAt       DateTime           @default(now())
+  createdBy       Int
+  user            User               @relation("UserStockMovements", fields: [createdBy], references: [id])
+  notes           String?
+
+  @@index([productId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+model InventoryCount {
+  id              Int                @id @default(autoincrement())
+  countNumber     String             @unique
+  name            String
+  scheduledDate   DateTime
+  completedDate   DateTime?
+  status          InventoryCountingStatus @default(DRAFT)
+  
+  items           InventoryCountItem[]
+  stockMovements  StockMovement[]
+  
+  notes           String?
+  createdAt       DateTime           @default(now())
+  createdBy       Int
+  creator         User               @relation("InventoryCountCreator", fields: [createdBy], references: [id])
+  completedBy     Int?
+  completer       User?              @relation("InventoryCountCompleter", fields: [completedBy], references: [id])
+  verifiedBy      Int?
+}
+
+model InventoryCountItem {
+  id              Int                @id @default(autoincrement())
+  expectedQuantity Int
+  countedQuantity Int
+  difference      Int
+  
+  productId       Int
+  product         Product            @relation(fields: [productId], references: [id])
+  
+  inventoryCountId Int
+  inventoryCount  InventoryCount     @relation(fields: [inventoryCountId], references: [id], onDelete: Cascade)
+  
+  notes           String?
+  
+  @@unique([inventoryCountId, productId])
+}
+
+model StockAlert {
+  id              Int                @id @default(autoincrement())
+  productId       Int                @unique
+  product         Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  minThreshold    Int                @default(5)
+  criticalThreshold Int              @default(2)
+  maxThreshold    Int?
+  reorderQuantity Int?
+  
+  notifyEmail     Boolean            @default(true)
+  notifyDashboard Boolean            @default(true)
+  
+  lastAlertSent   DateTime?
+  lastAlertType   String?
+  
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model StockReservation {
+  id              Int                @id @default(autoincrement())
+  reservationNumber String           @unique
+  quantity        Int
+  expiresAt       DateTime
+  
+  productId       Int
+  product         Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  orderId         Int?
+  order           Order?             @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  saleInvoiceId   Int?
+  saleInvoice     SaleInvoice?       @relation(fields: [saleInvoiceId], references: [id])
+  
+  sessionId       String?
+  createdAt       DateTime           @default(now())
+  isActive        Boolean            @default(true)
+  
+  @@index([productId])
+  @@index([sessionId])
+  @@index([expiresAt])
+}
+
+model StockTransfer {
+  id              Int                @id @default(autoincrement())
+  transferNumber  String             @unique
+  sourceLocation  String
+  destinationLocation String
+  status          StockMovementStatus @default(PENDING)
+  
+  items           StockTransferItem[]
+  
+  requestedDate   DateTime           @default(now())
+  completedDate   DateTime?
+  notes           String?
+  
+  requestedBy     Int
+  requester       User               @relation("StockTransferRequester", fields: [requestedBy], references: [id])
+  approvedBy      Int?
+  approver        User?              @relation("StockTransferApprover", fields: [approvedBy], references: [id])
+}
+
+model StockTransferItem {
+  id              Int                @id @default(autoincrement())
+  quantity        Int
+  transferredQuantity Int            @default(0)
+  
+  productId       Int
+  product         Product            @relation(fields: [productId], references: [id])
+  
+  transferId      Int
+  transfer        StockTransfer      @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  
+  notes           String?
+}
+
+//////////////////////////////////////
+// EXPENSE MODEL
+//////////////////////////////////////
+
+model Expense {
+  id              Int      @id @default(autoincrement())
+  title           String  
+  amount          Float    
+  date            DateTime 
+  receiptImage    String?  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@map("expenses")
 }

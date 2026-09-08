@@ -2,20 +2,24 @@ import {
   PrismaClient,
   UserRole,
   PurchaseInvoiceType,
-  SaleInvoiceType,
   InvoiceStatus,
-  PaymentMethod,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Clean existing data (order matters due to foreign key constraints)
+  // Clean existing data (children first)
   await prisma.purchaseInvoiceItem.deleteMany();
   await prisma.saleInvoiceItem.deleteMany();
+  await prisma.payment.deleteMany();
+
   await prisma.purchaseInvoice.deleteMany();
   await prisma.saleInvoice.deleteMany();
+
+  await prisma.car.deleteMany();
+  await prisma.driver.deleteMany();
+
   await prisma.product.deleteMany();
   await prisma.supplier.deleteMany();
   await prisma.client.deleteMany();
@@ -23,38 +27,42 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.companySettings.deleteMany();
 
-  console.log('🗑️  Cleaned existing data');
+  console.log('🗑️ Cleaned all tables');
 
-  // Hash passwords
-  const hashedPasswords = {
+  // ----------------------
+  // USERS
+  // ----------------------
+  const hashed = {
     admin: await bcrypt.hash('Admin123!', 10),
-    commercial1: await bcrypt.hash('Commercial123!', 10),
-    commercial2: await bcrypt.hash('Commercial456!', 10),
+    c1: await bcrypt.hash('Commercial123!', 10),
+    c2: await bcrypt.hash('Commercial456!', 10),
   };
 
-  // Create Users
-  const users = await prisma.user.createMany({
+  await prisma.user.createMany({
     data: [
       {
         email: 'admin@company.com',
-        password: hashedPasswords.admin,
+        password: hashed.admin,
         role: UserRole.ADMIN,
       },
       {
         email: 'commercial1@company.com',
-        password: hashedPasswords.commercial1,
+        password: hashed.c1,
         role: UserRole.COMMERCIAL,
       },
       {
         email: 'commercial2@company.com',
-        password: hashedPasswords.commercial2,
+        password: hashed.c2,
         role: UserRole.COMMERCIAL,
       },
     ],
   });
-  console.log('👥 Created 3 users');
 
-  // Create Company Settings
+  console.log('👥 Created users');
+
+  // ----------------------
+  // COMPANY SETTINGS
+  // ----------------------
   await prisma.companySettings.create({
     data: {
       companyName: 'TechCorp SARL',
@@ -63,32 +71,50 @@ async function main() {
       taxNumber: '12345678',
     },
   });
+
   console.log('🏢 Created company settings');
 
-  // Create Categories
-  const categories = await prisma.category.createMany({
+  // ----------------------
+  // CATEGORIES
+  // ----------------------
+  await prisma.category.createMany({
     data: [
       {
-        name: 'Électronique',
-        description: 'Produits électroniques et gadgets',
+        name: 'Coffee',
+        description: 'Hot and cold coffee beverages',
       },
       {
-        name: 'Informatique',
-        description: 'Ordinateurs, périphériques et accessoires',
+        name: 'Pastry',
+        description: 'Fresh pastries and baked goods',
       },
       {
-        name: 'Bureau',
-        description: 'Fournitures de bureau et papeterie',
+        name: 'Dessert',
+        description: 'Sweet desserts and cakes',
+      },
+      {
+        name: 'Tea',
+        description: 'Hot and iced tea beverages',
+      },
+      {
+        name: 'Beverage',
+        description: 'Cold drinks and juices',
       },
     ],
   });
-  console.log('📂 Created 3 categories');
-
-  // Get categories for relationships
   const categoryList = await prisma.category.findMany();
 
-  // Create Clients
-  const clients = await prisma.client.createMany({
+  // Create a map for easier category lookup
+  const categoryMap = new Map();
+  categoryList.forEach((cat) => {
+    categoryMap.set(cat.name, cat.id);
+  });
+
+  console.log('📂 Created categories');
+
+  // ----------------------
+  // CLIENTS
+  // ----------------------
+  await prisma.client.createMany({
     data: [
       {
         name: 'Entreprise ABC SARL',
@@ -110,10 +136,13 @@ async function main() {
       },
     ],
   });
-  console.log('👤 Created 3 clients');
+  const clientList = await prisma.client.findMany();
+  console.log('👤 Created clients');
 
-  // Create Suppliers
-  const suppliers = await prisma.supplier.createMany({
+  // ----------------------
+  // SUPPLIERS
+  // ----------------------
+  await prisma.supplier.createMany({
     data: [
       {
         code: 'SUP001',
@@ -141,102 +170,240 @@ async function main() {
       },
     ],
   });
-  console.log('🏭 Created 3 suppliers');
-
-  // Get clients and suppliers for relationships
-  const clientList = await prisma.client.findMany();
   const supplierList = await prisma.supplier.findMany();
+  console.log('🏭 Created suppliers');
 
-  // Create Products
-  const products = await prisma.product.createMany({
+  // ----------------------
+  // PRODUCTS (POS Products)
+  // ----------------------
+  await prisma.product.createMany({
     data: [
       {
-        reference: 'PROD001',
-        internalCode: 'INT001',
-        name: 'Ordinateur Portable HP EliteBook',
-        stock: 15,
-        minStock: 5,
-        purchasePrice: 8000,
-        marginPercent: 25,
-        salePrice: 10000,
-        discount: 5,
+        reference: 'COF001',
+        internalCode: 'COF001',
+        name: 'Espresso',
+        stock: 50,
+        minStock: 10,
+        purchasePrice: 2.5,
+        marginPercent: 40,
+        salePrice: 3.5,
+        discount: 0,
         vat: 20,
-        categoryId: categoryList[1].id, // Informatique
+        categoryId: categoryMap.get('Coffee') as number,
       },
       {
-        reference: 'PROD002',
-        internalCode: 'INT002',
-        name: 'Smartphone Samsung Galaxy S24',
+        reference: 'COF002',
+        internalCode: 'COF002',
+        name: 'Latte',
+        stock: 45,
+        minStock: 10,
+        purchasePrice: 3.0,
+        marginPercent: 50,
+        salePrice: 4.5,
+        discount: 0,
+        vat: 20,
+        categoryId: categoryMap.get('Coffee') as number,
+      },
+      {
+        reference: 'COF003',
+        internalCode: 'COF003',
+        name: 'Cappuccino',
+        stock: 40,
+        minStock: 10,
+        purchasePrice: 2.8,
+        marginPercent: 43,
+        salePrice: 4.0,
+        discount: 0,
+        vat: 20,
+        categoryId: categoryMap.get('Coffee') as number,
+      },
+      {
+        reference: 'COF004',
+        internalCode: 'COF004',
+        name: 'Americano',
+        stock: 55,
+        minStock: 10,
+        purchasePrice: 2.0,
+        marginPercent: 50,
+        salePrice: 3.0,
+        discount: 0,
+        vat: 20,
+        categoryId: categoryMap.get('Coffee') as number,
+      },
+      {
+        reference: 'PAS001',
+        internalCode: 'PAS001',
+        name: 'Croissant',
+        stock: 30,
+        minStock: 5,
+        purchasePrice: 1.5,
+        marginPercent: 67,
+        salePrice: 2.5,
+        discount: 0,
+        vat: 10,
+        categoryId: categoryMap.get('Pastry') as number,
+      },
+      {
+        reference: 'PAS002',
+        internalCode: 'PAS002',
+        name: 'Danish Pastry',
+        stock: 25,
+        minStock: 5,
+        purchasePrice: 1.8,
+        marginPercent: 67,
+        salePrice: 3.0,
+        discount: 0,
+        vat: 10,
+        categoryId: categoryMap.get('Pastry') as number,
+      },
+      {
+        reference: 'DES001',
+        internalCode: 'DES001',
+        name: 'Chocolate Cake',
+        stock: 20,
+        minStock: 5,
+        purchasePrice: 3.0,
+        marginPercent: 67,
+        salePrice: 5.0,
+        discount: 0,
+        vat: 10,
+        categoryId: categoryMap.get('Dessert') as number,
+      },
+      {
+        reference: 'DES002',
+        internalCode: 'DES002',
+        name: 'Cheesecake',
+        stock: 18,
+        minStock: 5,
+        purchasePrice: 3.3,
+        marginPercent: 67,
+        salePrice: 5.5,
+        discount: 0,
+        vat: 10,
+        categoryId: categoryMap.get('Dessert') as number,
+      },
+      {
+        reference: 'TEA001',
+        internalCode: 'TEA001',
+        name: 'Green Tea',
+        stock: 35,
+        minStock: 10,
+        purchasePrice: 2.0,
+        marginPercent: 50,
+        salePrice: 3.0,
+        discount: 0,
+        vat: 20,
+        categoryId: categoryMap.get('Tea') as number,
+      },
+      {
+        reference: 'TEA002',
+        internalCode: 'TEA002',
+        name: 'Black Tea',
+        stock: 40,
+        minStock: 10,
+        purchasePrice: 1.8,
+        marginPercent: 39,
+        salePrice: 2.5,
+        discount: 0,
+        vat: 20,
+        categoryId: categoryMap.get('Tea') as number,
+      },
+      {
+        reference: 'BEV001',
+        internalCode: 'BEV001',
+        name: 'Orange Juice',
         stock: 30,
         minStock: 10,
-        purchasePrice: 6000,
-        marginPercent: 30,
-        salePrice: 7800,
+        purchasePrice: 2.5,
+        marginPercent: 60,
+        salePrice: 4.0,
         discount: 0,
         vat: 20,
-        categoryId: categoryList[0].id, // Électronique
+        categoryId: categoryMap.get('Beverage') as number,
       },
       {
-        reference: 'PROD003',
-        internalCode: 'INT003',
-        name: 'Imprimante Multifonction Canon',
-        stock: 8,
-        minStock: 3,
-        purchasePrice: 3000,
-        marginPercent: 20,
-        salePrice: 3600,
-        discount: 10,
-        vat: 20,
-        categoryId: categoryList[1].id, // Informatique
-      },
-      {
-        reference: 'PROD004',
-        internalCode: 'INT004',
-        name: 'Cahier de compte 200 pages',
-        stock: 100,
-        minStock: 50,
-        purchasePrice: 25,
-        marginPercent: 40,
-        salePrice: 35,
-        discount: 0,
-        vat: 10,
-        categoryId: categoryList[2].id, // Bureau
-      },
-      {
-        reference: 'PROD005',
-        internalCode: 'INT005',
-        name: 'Tablette iPad 10ème génération',
-        stock: 12,
-        minStock: 4,
-        purchasePrice: 4500,
-        marginPercent: 28,
-        salePrice: 5760,
-        discount: 5,
-        vat: 20,
-        categoryId: categoryList[0].id, // Électronique
-      },
-      {
-        reference: 'PROD006',
-        internalCode: 'INT006',
-        name: 'Stylos pack de 10',
-        stock: 200,
-        minStock: 100,
-        purchasePrice: 15,
+        reference: 'COF005',
+        internalCode: 'COF005',
+        name: 'Iced Coffee',
+        stock: 35,
+        minStock: 10,
+        purchasePrice: 3.0,
         marginPercent: 50,
-        salePrice: 22.5,
+        salePrice: 4.5,
         discount: 0,
-        vat: 10,
-        categoryId: categoryList[2].id, // Bureau
+        vat: 20,
+        categoryId: categoryMap.get('Coffee') as number,
       },
     ],
   });
-  console.log('📦 Created 6 products');
-
-  // Get products for relationships
   const productList = await prisma.product.findMany();
+  console.log('📦 Created POS products');
 
-  // Create Purchase Invoices
-  const purchaseInvoice1 = await prisma.purchaseInvoice.create({
+  // ----------------------
+  // DRIVERS
+  // ----------------------
+  const driver1 = await prisma.driver.create({
+    data: {
+      firstName: 'Ali',
+      lastName: 'Ben Salem',
+      phone: '+216 22 111 222',
+      cin: '12345678',
+      licenseNumber: 'L-46789',
+    },
+  });
+  const driver2 = await prisma.driver.create({
+    data: {
+      firstName: 'Sami',
+      lastName: 'Trabelsi',
+      phone: '+216 55 333 444',
+      cin: '87654321',
+      licenseNumber: 'L-55678',
+    },
+  });
+  const driver3 = await prisma.driver.create({
+    data: {
+      firstName: 'Moez',
+      lastName: 'Jlassi',
+      phone: '+216 98 444 555',
+      cin: '65432187',
+      licenseNumber: 'L-98123',
+    },
+  });
+  console.log('🧑‍✈️ Created drivers');
+
+  // ----------------------
+  // CARS → assign drivers directly
+  // ----------------------
+  await prisma.car.create({
+    data: {
+      registration: 'TU-1001',
+      brand: 'Toyota',
+      model: 'Corolla',
+      year: 2020,
+    },
+  });
+  await prisma.car.create({
+    data: {
+      registration: 'TU-2002',
+      brand: 'Kia',
+      model: 'Rio',
+      year: 2021,
+    },
+  });
+  await prisma.car.create({
+    data: {
+      registration: 'TU-3003',
+      brand: 'Hyundai',
+      model: 'i20',
+      year: 2019,
+    },
+  });
+  console.log('🚗 Created and assigned cars');
+
+  // ----------------------
+  // PURCHASE INVOICES
+  // ----------------------
+  await prisma.purchaseInvoice.create({
     data: {
       invoiceNumber: 'FAC-ACH-2024-001',
       date: new Date('2024-01-15'),
@@ -247,22 +414,14 @@ async function main() {
       totalTTC: 24000,
       items: {
         create: [
-          {
-            quantity: 5,
-            price: 8000,
-            productId: productList[0].id,
-          },
-          {
-            quantity: 10,
-            price: 6000,
-            productId: productList[1].id,
-          },
+          { quantity: 5, price: 8000, productId: productList[0].id },
+          { quantity: 10, price: 6000, productId: productList[1].id },
         ],
       },
     },
   });
 
-  const purchaseInvoice2 = await prisma.purchaseInvoice.create({
+  await prisma.purchaseInvoice.create({
     data: {
       invoiceNumber: 'FAC-ACH-2024-002',
       date: new Date('2024-01-20'),
@@ -272,145 +431,25 @@ async function main() {
       totalHT: 9000,
       totalTTC: 10800,
       items: {
-        create: [
-          {
-            quantity: 3,
-            price: 3000,
-            productId: productList[2].id,
-          },
-        ],
+        create: [{ quantity: 3, price: 3000, productId: productList[2].id }],
       },
     },
   });
+  console.log('📥 Created purchase invoices');
 
-  const purchaseInvoice3 = await prisma.purchaseInvoice.create({
-    data: {
-      invoiceNumber: 'BC-2024-001',
-      date: new Date('2024-01-25'),
-      type: PurchaseInvoiceType.PURCHASE_ORDER,
-      status: InvoiceStatus.DRAFT,
-      supplierId: supplierList[2].id,
-      totalHT: 13500,
-      totalTTC: 16200,
-      items: {
-        create: [
-          {
-            quantity: 3,
-            price: 4500,
-            productId: productList[4].id,
-          },
-        ],
-      },
-    },
-  });
-  console.log('📥 Created 3 purchase invoices');
-
-  // Create Sale Invoices
-  const saleInvoice1 = await prisma.saleInvoice.create({
-    data: {
-      invoiceNumber: 'FAC-VTE-2024-001',
-      date: new Date('2024-01-18'),
-      type: SaleInvoiceType.SALE_INVOICE,
-      status: InvoiceStatus.PAID,
-      clientId: clientList[0].id,
-      totalHT: 20000,
-      totalTTC: 24000,
-      items: {
-        create: [
-          {
-            quantity: 2,
-            price: 10000,
-            productId: productList[0].id,
-          },
-        ],
-      },
-    },
-  });
-
-  const saleInvoice2 = await prisma.saleInvoice.create({
-    data: {
-      invoiceNumber: 'DEV-2024-001',
-      date: new Date('2024-01-22'),
-      type: SaleInvoiceType.QUOTATION,
-      status: InvoiceStatus.DRAFT,
-      clientId: clientList[1].id,
-      totalHT: 23400,
-      totalTTC: 28080,
-      items: {
-        create: [
-          {
-            quantity: 3,
-            price: 7800,
-            productId: productList[1].id,
-          },
-        ],
-      },
-    },
-  });
-
-  const saleInvoice3 = await prisma.saleInvoice.create({
-    data: {
-      invoiceNumber: 'BL-2024-001',
-      date: new Date('2024-01-28'),
-      type: SaleInvoiceType.DELIVERY_NOTE,
-      status: InvoiceStatus.VALIDATED,
-      clientId: clientList[2].id,
-      totalHT: 7200,
-      totalTTC: 8640,
-      items: {
-        create: [
-          {
-            quantity: 2,
-            price: 3600,
-            productId: productList[2].id,
-          },
-        ],
-      },
-    },
-  });
-  console.log('📤 Created 3 sale invoices');
-
-  // Create Payments
-
-  // Update product stock based on invoices
-  // Purchase invoices increase stock
-  const purchaseItems = await prisma.purchaseInvoiceItem.findMany({
-    include: { product: true },
-  });
-
+  // ----------------------
+  // UPDATE STOCK
+  // ----------------------
+  const purchaseItems = await prisma.purchaseInvoiceItem.findMany();
   for (const item of purchaseItems) {
     await prisma.product.update({
       where: { id: item.productId },
-      data: {
-        stock: {
-          increment: item.quantity,
-        },
-      },
+      data: { stock: { increment: item.quantity } },
     });
   }
 
-  // Sale invoices decrease stock
-  const saleItems = await prisma.saleInvoiceItem.findMany({
-    include: { product: true },
-  });
-
-  for (const item of saleItems) {
-    await prisma.product.update({
-      where: { id: item.productId },
-      data: {
-        stock: {
-          decrement: item.quantity,
-        },
-      },
-    });
-  }
-  console.log('📊 Updated product stock based on invoices');
-
+  console.log('📊 Updated stock');
   console.log('✅ Seeding completed successfully!');
-  console.log('🔑 Login credentials:');
-  console.log('   Admin: admin@company.com / Admin123!');
-  console.log('   Commercial 1: commercial1@company.com / Commercial123!');
-  console.log('   Commercial 2: commercial2@company.com / Commercial456!');
 }
 
 main()

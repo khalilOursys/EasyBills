@@ -9,17 +9,26 @@ import {
   IsString,
   Min,
   ValidateNested,
+  ValidateIf,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PurchaseInvoiceType, InvoiceStatus } from '@prisma/client';
 
 export class CreatePurchaseInvoiceItemDto {
+  @IsOptional()
   @IsInt()
-  @IsNotEmpty()
-  productId: number;
+  productId?: number;
 
+  @IsOptional()
   @IsInt()
-  @Min(1)
+  rawMaterialId?: number;
+
+  @IsOptional()
+  @IsInt()
+  serviceId?: number;
+
+  @IsNumber()
+  @Min(0.01)
   quantity: number;
 
   @IsNumber()
